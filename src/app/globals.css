@@ -1,26 +1,58 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
-
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-background: #0f1417;
+  --color-foreground: #dfe3e7;
+  
+  --color-cortex-cyan: #2ddbde;
+  --color-cortex-cyan-dim: #1eaeb1;
+  --color-cortex-green: #5adcb3;
+  --color-cortex-slate: #1b2023;
+  --color-cortex-border: rgba(61, 73, 73, 0.3);
+  
+  --font-sans: "Inter", var(--font-geist-sans);
+  --font-mono: "Geist Mono", var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+@layer utilities {
+  .glass {
+    @apply bg-cortex-slate/40 backdrop-blur-xl border border-cortex-border;
+  }
+  
+  .glass-glow {
+    @apply shadow-[0_0_20px_rgba(45,219,222,0.15)] border-cortex-cyan/20;
+  }
+
+  .text-glow-cyan {
+    @apply drop-shadow-[0_0_8px_rgba(45,219,222,0.6)];
+  }
+
+  .animate-slow-pulse {
+    animation: slow-pulse 4s cubic-bezier(0.4, 0, 0.6, 1) infinite;
   }
 }
 
+@keyframes slow-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.6; }
+}
+
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background-color: var(--color-background);
+  color: var(--color-foreground);
+  @apply selection:bg-cortex-cyan/30;
+}
+
+/* Custom Scrollbar for Tactical Feel */
+::-webkit-scrollbar {
+  width: 4px;
+  height: 4px;
+}
+
+::-webkit-scrollbar-track {
+  @apply bg-transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  @apply bg-cortex-cyan/20 rounded-full hover:bg-cortex-cyan/40 transition-colors;
 }
