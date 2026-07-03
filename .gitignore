@@ -39,3 +39,8 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+ 
+test_db_*/
+*_tsc_errors*.txt
+phase*_tsc_errors*.txt
+
