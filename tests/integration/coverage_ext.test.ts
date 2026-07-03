@@ -35,7 +35,7 @@ describe("Certification Branch Coverage Extension", () => {
             deviation: { value: 0, z_score: 0 },
             anomaly_flag: false,
             confidence: 1,
-            correlation: []
+            correlation: [], trace_id: 'test-trace-coverage-001'
         };
 
         const entry = await createLedgerEntry(dummyPayload, 'PREV_HASH');

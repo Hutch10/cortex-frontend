@@ -15,7 +15,7 @@ describe("Persistence Corruption: Ledger Tamper Detection", () => {
         const payload = { 
             signal_id: 'seismic_count' as any, trace_id: "test_trace", trace_id: "test_trace", 
             ts_norm: 100000, 
-            baseline: { robust_center: 10, robust_sigma: 1, mad: 0.67, mean: 10, path: 'median' as any },
+            baseline: { robust_center: 10, robust_sigma: 1, mad: 0.67, mean: 10, type: 'median' as any },
             deviation: { value: 10, z_score: 0 },
             anomaly_flag: false as any,
             confidence: 1,
