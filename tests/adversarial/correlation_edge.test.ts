@@ -7,7 +7,7 @@ describe("Correlation Engine Edge Cases", () => {
         robust_sigma: 1,
         mad: 0.67,
         mean: 0,
-        path: 'median' as const
+        type: 'median' as const
     };
 
     it("returns null when correlation is below threshold (Line 73)", () => {

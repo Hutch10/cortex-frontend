@@ -9,7 +9,7 @@ describe("Ledger Corruption Injection: Distributed Truth Certification (Phase 5.
     const mockPayload = (ts: number): ComputationResult => ({
         signal_id: 'seismic_count' as any, trace_id: "test_trace", trace_id: "test_trace",
         ts_norm: ts,
-        baseline: { robust_center: 10, robust_sigma: 1, mad: 1, mean: 10, path: 'median' as any },
+        baseline: { robust_center: 10, robust_sigma: 1, mad: 1, mean: 10, type: 'median' as const as any },
         deviation: { value: 10, z_score: 0 },
         anomaly_flag: false,
         confidence: 1,
