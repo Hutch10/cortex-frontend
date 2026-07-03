@@ -7,7 +7,7 @@ describe("Identity Logic: trace_id vs content_hash", () => {
     beforeEach(async () => {
         try {
             const all = await getVortexQueueDB().allDocs({include_docs: true});
-            for (let row of all.rows) await getVortexQueueDB().remove(row.doc as any);
+            for (let row of all.rows) await getVortexQueueDB().remove(row.doc as { _id: string; _rev: string });
         } catch (e: any) {}
     });
 
@@ -29,16 +29,16 @@ describe("Identity Logic: trace_id vs content_hash", () => {
         expect(markers.length).toBe(1);
         
         // One process won the race (t1 or t2)
-        expect([t1, t2]).toContain((markers[0].doc as any).trace_id);
+        expect([t1, t2]).toContain((markers[0].doc as { trace_id?: string })?.trace_id);
     });
 
     it("verifies trace_id exists in queue but does not affect ledger chain parity", async () => {
         const payload = { 
-            signal_id: 'seismic_count' as any, trace_id: "test_trace", trace_id: "test_trace", 
+            signal_id: 'seismic_count' as const, trace_id: "test_trace", trace_id: "test_trace", 
             ts_norm: 100000, 
-            baseline: { robust_center: 10, robust_sigma: 1, mad: 0.67, mean: 10, type: 'median' as any },
+            baseline: { robust_center: 10, robust_sigma: 1, mad: 0.67, mean: 10, type: 'median' as const },
             deviation: { value: 10, z_score: 0 },
-            anomaly_flag: false as any,
+            anomaly_flag: false as const,
             confidence: 1,
             correlation: []
         };

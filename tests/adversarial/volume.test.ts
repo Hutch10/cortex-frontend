@@ -6,21 +6,21 @@ import { DeterministicTestClock } from "../../src/lib/engine/clock";
 vi.mock("../../src/lib/db/client", () => {
     const PouchDB = require("pouchdb");
     return {
-        vortexQueueDB: new PouchDB(`./test_db_vortex_volume_hardfixed_v3`),
+        getVortexQueueDB: () => new PouchDB(`./test_db_vortex_volume_hardfixed_v3`),
         pulseLedgerDB: new PouchDB(`./test_db_ledger_volume_hardfixed_v3`),
         quarantineDB: new PouchDB(`./test_db_quar_volume_hardfixed_v3`)
     };
 });
 
-import { vortexQueueDB } from "../../src/lib/db/client";
+import { getVortexQueueDB } from "../../src/lib/db/client";
 
 describe("Adversarial High-Volume Ingestion", () => {
     const source = "seismic_count";
 
     beforeEach(async () => {
         try {
-            const all = await vortexQueueDB.allDocs({ include_docs: true });
-            for (const row of all.rows) await vortexQueueDB.remove(row.doc as any);
+            const all = await getVortexQueueDB().allDocs({ include_docs: true });
+            for (const row of all.rows) await getVortexQueueDB().remove(row.doc as { _id: string; _rev: string });
         } catch (e) {}
     });
 
@@ -41,7 +41,7 @@ describe("Adversarial High-Volume Ingestion", () => {
         const duration = Date.now() - startTime;
         console.log(`[VOLUME] Ingested ${TOTAL} samples in ${duration}ms`);
 
-        const allQ = await vortexQueueDB.allDocs();
+        const allQ = await getVortexQueueDB().allDocs();
         expect(allQ.total_rows).toBe(TOTAL * 2);
     }, 60000); // 60s timeout
 });

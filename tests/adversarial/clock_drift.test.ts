@@ -6,13 +6,13 @@ import { Clock } from "../../src/lib/engine/clock";
 vi.mock("../../src/lib/db/client", () => {
     const PouchDB = require("pouchdb");
     return {
-        vortexQueueDB: new PouchDB(`./test_db_vortex_drift_hardfixed`),
+        getVortexQueueDB: () => new PouchDB(`./test_db_vortex_drift_hardfixed`),
         pulseLedgerDB: new PouchDB(`./test_db_ledger_drift_hardfixed`),
         quarantineDB: new PouchDB(`./test_db_quar_drift_hardfixed`)
     };
 });
 
-import { vortexQueueDB } from "../../src/lib/db/client";
+import { getVortexQueueDB } from "../../src/lib/db/client";
 
 class JumpClock implements Clock {
     constructor(private time: number) {}
@@ -25,8 +25,8 @@ describe("Adversarial Clock Drift Reality", () => {
 
     beforeEach(async () => {
         try {
-            const all = await vortexQueueDB.allDocs({ include_docs: true });
-            for (const row of all.rows) await vortexQueueDB.remove(row.doc as any);
+            const all = await getVortexQueueDB().allDocs({ include_docs: true });
+            for (const row of all.rows) await getVortexQueueDB().remove(row.doc as { _id: string; _rev: string });
         } catch (e) {}
     });
 
@@ -36,7 +36,7 @@ describe("Adversarial Clock Drift Reality", () => {
         
         await enqueueSample(source, futureTs, { value: 10 }, arrivalClock);
         
-        const all = await vortexQueueDB.allDocs({ include_docs: true });
+        const all = await getVortexQueueDB().allDocs({ include_docs: true });
         const entry = all.rows.find((r: { id: string; doc?: unknown }) => r.id.startsWith("queue::"));
         expect(entry).toBeDefined();
         expect((entry!.doc as any).status).toBe("rejected");
@@ -49,7 +49,7 @@ describe("Adversarial Clock Drift Reality", () => {
         
         await enqueueSample(source, sampleTs, { value: 20 }, arrivalClock);
 
-        const all = await vortexQueueDB.allDocs({ include_docs: true });
+        const all = await getVortexQueueDB().allDocs({ include_docs: true });
         const entry = all.rows.find((r: { id: string; doc?: unknown }) => (r.doc as { status?: string })?.status === 'rejected' && (r.doc as { ts_raw?: string })?.ts_raw === sampleTs);
         expect(entry).toBeDefined();
     });
@@ -61,7 +61,7 @@ describe("Adversarial Clock Drift Reality", () => {
         
         await enqueueSample(source, sampleTs, { value: 30 }, arrivalClock);
         
-        const all = await vortexQueueDB.allDocs({ include_docs: true });
+        const all = await getVortexQueueDB().allDocs({ include_docs: true });
         const entry = all.rows.find((r: { id: string; doc?: unknown }) => (r.doc as { status?: string })?.status === 'pending' && (r.doc as { ts_raw?: string })?.ts_raw === sampleTs);
         expect(entry).toBeDefined();
     });

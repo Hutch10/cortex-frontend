@@ -7,17 +7,17 @@ describe("Persistence Corruption: Ledger Tamper Detection", () => {
         const db = getPulseLedgerDB();
         try {
             const all = await db.allDocs({include_docs: true});
-            for (let row of all.rows) await db.remove(row.doc as any);
+            for (let row of all.rows) await db.remove(row.doc as { _id: string; _rev: string });
         } catch (e: any) {}
     });
 
     it("detects and quarantines tampered ledger entries (Phase 4.5)", async () => {
         const payload = { 
-            signal_id: 'seismic_count' as any, trace_id: "test_trace", trace_id: "test_trace", 
+            signal_id: 'seismic_count' as const, trace_id: "test_trace", trace_id: "test_trace", 
             ts_norm: 100000, 
-            baseline: { robust_center: 10, robust_sigma: 1, mad: 0.67, mean: 10, type: 'median' as any },
+            baseline: { robust_center: 10, robust_sigma: 1, mad: 0.67, mean: 10, type: 'median' as const },
             deviation: { value: 10, z_score: 0 },
-            anomaly_flag: false as any,
+            anomaly_flag: false as const,
             confidence: 1,
             correlation: []
         };
@@ -40,6 +40,6 @@ describe("Persistence Corruption: Ledger Tamper Detection", () => {
         const dbQ = getQuarantineDB();
         const allQ = await dbQ.allDocs({include_docs: true});
         expect(allQ.rows.length).toBe(1);
-        expect((allQ.rows[0].doc as any).reason).toBe("tamper_detected");
+        expect((allQ.rows[0].doc as const).reason).toBe("tamper_detected");
     });
 });

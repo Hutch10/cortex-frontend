@@ -6,13 +6,13 @@ import { DeterministicTestClock } from "../../src/lib/engine/clock";
 vi.mock("../../src/lib/db/client", () => {
     const PouchDB = require("pouchdb");
     return {
-        vortexQueueDB: new PouchDB(`./test_db_vortex_concurrency_hardfixed_v2`),
+        getVortexQueueDB: () => new PouchDB(`./test_db_vortex_concurrency_hardfixed_v2`),
         pulseLedgerDB: new PouchDB(`./test_db_ledger_concurrency_hardfixed_v2`),
         quarantineDB: new PouchDB(`./test_db_quar_concurrency_hardfixed_v2`)
     };
 });
 
-import { vortexQueueDB as mockedVortex } from "../../src/lib/db/client";
+import { getVortexQueueDB as mockedVortex } from "../../src/lib/db/client";
 
 describe("Adversarial Concurrency Stress", () => {
     const ts_norm = 1776458000000;
@@ -21,8 +21,8 @@ describe("Adversarial Concurrency Stress", () => {
 
     beforeEach(async () => {
         try {
-            const all = await mockedVortex.allDocs({ include_docs: true });
-            for (const row of all.rows) await mockedVortex.remove(row.doc as any);
+            const all = await mockedVortex().allDocs({ include_docs: true });
+            for (const row of all.rows) await mockedVortex().remove(row.doc as { _id: string; _rev: string });
         } catch (e) {}
     });
 
@@ -32,7 +32,7 @@ describe("Adversarial Concurrency Stress", () => {
             promises.push(insertPlaceholder(source, ts_norm));
         }
         await Promise.all(promises);
-        const allDocs = await mockedVortex.allDocs({ include_docs: true });
+        const allDocs = await mockedVortex().allDocs({ include_docs: true });
         const entries = allDocs.rows.filter((r: { id: string; doc?: unknown }) => r.id.startsWith("queue::"));
         expect(entries.length).toBe(1);
     });
@@ -44,7 +44,7 @@ describe("Adversarial Concurrency Stress", () => {
             promises.push(enqueueSample(source, new Date(ts_norm).toISOString(), { value: i }, clock));
         }
         await Promise.all(promises);
-        const allDocs = await mockedVortex.allDocs({ include_docs: true });
+        const allDocs = await mockedVortex().allDocs({ include_docs: true });
         const queueEntries = allDocs.rows.filter((r: { id: string; doc?: unknown }) => r.id.startsWith("queue::"));
         const markerEntries = allDocs.rows.filter((r: { id: string; doc?: unknown }) => r.id.startsWith("sample::"));
 
