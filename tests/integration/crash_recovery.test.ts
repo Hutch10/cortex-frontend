@@ -79,7 +79,7 @@ describe("Crash Recovery Engine", () => {
               deviation: { variance: 0, z_score: 9, value: 999 },
               source: 'hrv',
               ts_norm: 12345600000
-         }, "HASH");
+         }, "HASH", "test-trace-crash");
 
          const ledgerSpy = vi.spyOn(getPulseLedgerDB(), 'put').mockRejectedValueOnce({ status: 500, message: 'Simulated Disk Failure' });
          

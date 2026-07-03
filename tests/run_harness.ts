@@ -16,8 +16,7 @@ async function generateEntries(count: number, startTs: number = 1000): Promise<L
             signal_id: VALID_SIGNALS[i % VALID_SIGNALS.length], trace_id: "test_trace",
             ts_norm: startTs + i * 1000,
             baseline: { med: 0, mad: 1, robust_center: 0, robust_sigma: 1, type: 'median', mean: 0, stddev: 1 }, deviation: { value: Math.random(), z_score: 0 }, anomaly_flag: false, correlation: [],
-            confidence: 0.9,
-            trace_id: "test_trace"
+            confidence: 0.9
         };
         const entry = await createLedgerEntry(payload, lastHash, `trace_${i}`);
         lastHash = entry.hash;

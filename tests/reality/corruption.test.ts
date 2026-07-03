@@ -7,7 +7,7 @@ import { ComputationResult } from '../../src/lib/engine/window';
 describe("Ledger Corruption Injection: Distributed Truth Certification (Phase 5.3)", () => {
     
     const mockPayload = (ts: number): ComputationResult => ({
-        signal_id: 'seismic_count' as any, trace_id: "test_trace", trace_id: "test_trace",
+        signal_id: 'seismic_count' as any, trace_id: "test_trace",
         ts_norm: ts,
         baseline: { robust_center: 10, robust_sigma: 1, mad: 1, mean: 10, type: 'median' as const as any },
         deviation: { value: 10, z_score: 0 },

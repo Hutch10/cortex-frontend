@@ -18,7 +18,7 @@ describe("Atomicity Simulation: Crash-Artifact Recovery (Phase 5.2)", () => {
             prev_hash: 'GENESIS_HASH',
             hash: 'some_hash',
             payload: { 
-                signal_id: 'seismic_count' as any, trace_id: "test_trace", trace_id: "test_trace", 
+                signal_id: 'seismic_count' as any, trace_id: "test_trace", 
                 ts_norm: 1000, 
                 baseline: { robust_center: 10, robust_sigma: 1, mad: 1, mean: 10, type: 'median' as const as any },
                 deviation: { value: 10, z_score: 0 },

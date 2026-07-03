@@ -36,7 +36,7 @@ describe("Ledger Replay Certification: Bit-for-Bit State Reconstruction", () => 
             
             // Simulation of orchestration loop
             windowValues.push(val);
-            const comp = processWindow(source, tsNow, tsNow, [...windowValues], 15) as ComputationResult;
+            const comp = processWindow(source, tsNow, tsNow, [...windowValues], 15, 'test-trace-replay') as ComputationResult;
             liveResults.push(comp);
 
             const ledgerEntry = await createLedgerEntry(comp, last_hash, trace_id);

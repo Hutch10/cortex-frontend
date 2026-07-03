@@ -34,12 +34,12 @@ async function runOrchestrationLoop(signalId: any, rawSamples: { ts: string, val
              doc.ts_norm,
              [...windowValues],
              15
-        ) as ComputationResult;
+        , 'test-trace-determinism') as ComputationResult;
         
         results.push(comp);
 
         // 4. Ledger Write
-        const lEntry = await createLedgerEntry(comp, last_hash);
+        const lEntry = await createLedgerEntry(comp, last_hash, 'test-trace-determinism');
         await getPulseLedgerDB().put(lEntry);
         
         last_hash = lEntry.hash;

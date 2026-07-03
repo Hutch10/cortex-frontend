@@ -36,10 +36,10 @@ async function runFilesystemLoop(signalId: any, rawSamples: { ts: string, val: n
         const doc: any = qEntry.doc;
         windowValues.push(doc.payload.value);
 
-        const comp = processWindow(signalId, testClock.now(), doc.ts_norm, [...windowValues], 15) as ComputationResult;
+        const comp = processWindow(signalId, testClock.now(), doc.ts_norm, [...windowValues], 15, 'test-trace-persist') as ComputationResult;
         results.push(comp);
 
-        const lEntry = await createLedgerEntry(comp, last_hash);
+        const lEntry = await createLedgerEntry(comp, last_hash, 'test-trace-persist');
         await getPulseLedgerDB().put(lEntry);
         last_hash = lEntry.hash;
         

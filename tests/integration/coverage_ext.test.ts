@@ -38,7 +38,7 @@ describe("Certification Branch Coverage Extension", () => {
             correlation: [], trace_id: 'test-trace-coverage-001'
         };
 
-        const entry = await createLedgerEntry(dummyPayload, 'PREV_HASH');
+        const entry = await createLedgerEntry(dummyPayload, 'PREV_HASH', 'test-trace-cov-ext');
 
         // 1. Test invalid status branch (line 39)
         entry.status = 'invalid';
@@ -57,7 +57,7 @@ describe("Certification Branch Coverage Extension", () => {
 
     it("triggers window.ts early exit for small windows", async () => {
         // hits line 38 - values.length < 10
-        const res = processWindow('hrv', 2000, 1000, [1, 2, 3], 15) as ComputationResult;
+        const res = processWindow('hrv', 2000, 1000, [1, 2, 3], 15, 'test-trace-cov-ext') as ComputationResult;
         expect(res.confidence).toBe(0);
         expect(res.deviation.value).toBe(3);
     });

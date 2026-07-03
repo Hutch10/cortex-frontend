@@ -13,7 +13,7 @@ describe("Persistence Corruption: Ledger Tamper Detection", () => {
 
     it("detects and quarantines tampered ledger entries (Phase 4.5)", async () => {
         const payload = { 
-            signal_id: 'seismic_count' as const, trace_id: "test_trace", trace_id: "test_trace", 
+            signal_id: 'seismic_count' as const, trace_id: "test_trace", 
             ts_norm: 100000, 
             baseline: { robust_center: 10, robust_sigma: 1, mad: 0.67, mean: 10, type: 'median' as const },
             deviation: { value: 10, z_score: 0 },

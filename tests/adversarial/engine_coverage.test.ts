@@ -48,7 +48,7 @@ describe("Engine Branch Coverage Expansion", () => {
     });
 
     it("hits window.ts empty values fallback", () => {
-        const res = processWindow('hrv', 1000, 1000, [], 15);
+        const res = processWindow('hrv', 1000, 1000, [], 15, 'test-trace-engine-cov');
         expect(res.deviation!.value).toBe(0);
     });
 

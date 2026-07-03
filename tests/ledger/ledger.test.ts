@@ -26,7 +26,7 @@ describe("Forensic Ledger Tests", () => {
     describe("Chain & Signature", () => {
         it("creates valid ledger entry and verifies signature & hash", async () => {
              const last_hash = "GENESIS_HASH";
-             const entry = await createLedgerEntry(mockPayload, last_hash);
+             const entry = await createLedgerEntry(mockPayload, last_hash, 'test-trace-ledger');
 
              expect(entry.status).toBe('valid');
              expect(entry.prev_hash).toBe("GENESIS_HASH");
@@ -39,7 +39,7 @@ describe("Forensic Ledger Tests", () => {
 
         it("detects tampered payload", async () => {
              const last_hash = "GENESIS_HASH";
-             const entry = await createLedgerEntry(mockPayload, last_hash);
+             const entry = await createLedgerEntry(mockPayload, last_hash, 'test-trace-ledger');
 
              // Tamper the payload!
              entry.payload.deviation.value = 999;
@@ -50,7 +50,7 @@ describe("Forensic Ledger Tests", () => {
 
     describe("Quarantine & Segment Anchors", () => {
         it("quarantines a failed entry and creates segment anchor", async () => {
-             const entry = await createLedgerEntry(mockPayload, "HASH_1");
+             const entry = await createLedgerEntry(mockPayload, "HASH_1", 'test-trace-ledger');
              
              const qEntry = await quarantineEntry(entry, "tamper_detected", "CORRUPTED_HASH");
              expect(qEntry.status).toBe('invalid');
@@ -67,8 +67,8 @@ describe("Forensic Ledger Tests", () => {
         });
         
         it("handles multiple consecutive corruptions without losing data", async () => {
-            const e1 = await createLedgerEntry({...mockPayload, ts_norm: 1}, "H0");
-            const e2 = await createLedgerEntry({...mockPayload, ts_norm: 2}, "H0");
+            const e1 = await createLedgerEntry({...mockPayload, ts_norm: 1}, "H0", "test-trace-ledger");
+            const e2 = await createLedgerEntry({...mockPayload, ts_norm: 2}, "H0", "test-trace-ledger");
 
             const q1 = await quarantineEntry(e1, "hash_mismatch", "BOGUS1");
             const q2 = await quarantineEntry(e2, "hash_mismatch", "BOGUS2");
