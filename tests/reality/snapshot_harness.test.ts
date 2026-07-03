@@ -1,3 +1,4 @@
+import { SignalID } from "../../src/lib/ingestion/queue";
 import { describe, it, expect, vi } from "vitest";
 import { LedgerEntry, createLedgerEntry, computeChainHash } from "../../src/lib/ledger/chain";
 import { ComputationResult } from "../../src/lib/engine/window";
@@ -6,16 +7,18 @@ import { dehydrateEvents, hydrateEvents } from "../../src/lib/engine/cold_storag
 import { reconstructState, reconstructFromSnapshot, SystemStateSnapshot } from "../../src/lib/engine/replay";
 import { bootWithFallback } from "../../src/lib/engine/orchestrator";
 
+const VALID_SIGNALS: SignalID[] = ['kp_index', 'seismic_count', 'solar_flux', 'hrv'];
+
 async function generateEntries(count: number, startTs: number = 1000): Promise<LedgerEntry[]> {
     const entries: LedgerEntry[] = [];
     let lastHash = "GENESIS_HASH";
     for (let i = 0; i < count; i++) {
         const payload: ComputationResult = {
-            signal_id: `signal_${i % 10}` as any as SignalID, trace_id: "test_trace", trace_id: "test_trace",
+            signal_id: VALID_SIGNALS[i % VALID_SIGNALS.length], trace_id: "test_trace",
             ts_norm: startTs + i * 1000,
             values: [Math.random()],
             confidence: 0.9,
-            trace_id: `trace_${i}`
+            trace_id: "test_trace"
         };
         const entry = await createLedgerEntry(payload, lastHash, `trace_${i}`);
         lastHash = entry.hash;
@@ -31,7 +34,7 @@ describe("Snapshot & Compaction Proof Harness", () => {
         const snapshot = createSnapshot(state, 50, "GENESIS_SNAPSHOT");
         
         // Corrupt it
-        snapshot.serialized_state = snapshot.serialized_state.replace("signal_1", "hacked_1");
+        snapshot.serialized_state = snapshot.serialized_state.replace("seismic_count", "hacked_1");
         
         expect(() => verifySnapshot(snapshot)).toThrow("CORRUPT_SNAPSHOT");
         await expect(reconstructFromSnapshot(snapshot, [])).rejects.toThrow("CORRUPT_SNAPSHOT");
@@ -111,7 +114,7 @@ describe("Snapshot & Compaction Proof Harness", () => {
         const entries = await generateEntries(10);
         const state = await reconstructState(entries);
         // Emulate retired asset: it exists in `state`
-        expect(state.signals.has("signal_1")).toBe(true);
+        expect(state.signals.has("seismic_count")).toBe(true);
     });
 
     describe("Performance Synthetics", () => {
