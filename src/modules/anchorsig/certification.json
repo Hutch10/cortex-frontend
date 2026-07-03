@@ -1,0 +1,13 @@
+{
+  "moduleName": "anchorsig",
+  "version": "0.9.0-rc1",
+  "capabilities": ["media-compression", "offline-capture", "replay"],
+  "performanceBudgets": {
+    "maxBundleSizeKb": 300,
+    "maxTimeToInteractiveMs": 1000
+  },
+  "tests": {
+    "unit": "jest tests/unit",
+    "integration": "jest tests/integration"
+  }
+}

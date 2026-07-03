@@ -27,7 +27,7 @@ describe("Distributed Truth Certification: Independent Node Idempotency (Phase 5
             
             return new Promise((resolve, reject) => {
                 const child = fork(path.join(__dirname, 'worker_sim.ts'), [
-                    source, ts, value, clockNow.toString(), `--db-dir=${dbDir}`
+                    source, ts.toString(), value.toString(), clockNow.toString(), `--db-dir=${dbDir}`
                 ], {
                     execArgv: ['--import', 'tsx'] // Use tsx for execution
                 });

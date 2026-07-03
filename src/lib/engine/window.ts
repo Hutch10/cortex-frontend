@@ -15,6 +15,7 @@ export interface ComputationResult {
     strength: number;
     lag_offset: number;
   }>;
+  trace_id: string; // Forensic trace identifier
 }
 
 export function processWindow(
@@ -22,8 +23,9 @@ export function processWindow(
     ts_now_utc: number, 
     ts_latest_norm: number, 
     values: number[], 
-    expected_samples: number
-): Partial<ComputationResult> {
+    expected_samples: number,
+    trace_id: string
+): ComputationResult {
     
     let baseline: BaselineResult;
     let confidence = 0;
@@ -43,7 +45,8 @@ export function processWindow(
              deviation,
              anomaly_flag: false,
              confidence: 0,
-             correlation: []
+             correlation: [],
+             trace_id
         };
     }
 
@@ -73,6 +76,7 @@ export function processWindow(
         deviation,
         anomaly_flag,
         confidence, // intrinsic computed, reinforcement applied later
-        correlation: []
+        correlation: [],
+        trace_id
     };
 }

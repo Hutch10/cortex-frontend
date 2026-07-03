@@ -76,19 +76,21 @@ describe("Crash Recovery Engine", () => {
               anomaly_flag: true,
               baseline: { med: 0, mad: 1, robust_center: 0, robust_sigma: 1, type: 'median' },
               confidence: 0,
-              deviation: { variance: 0, z_score: 9, value: 999 },
-              source: 'hrv',
-              ts_norm: 12345600000
+              deviation: { z_score: 9, value: 999 },
+              ts_norm: 12345600000,
+              signal_id: 'hrv',
+              correlation: [],
+              trace_id: 'test-trace-crash'
          }, "HASH", "test-trace-crash");
 
          const ledgerSpy = vi.spyOn(getPulseLedgerDB(), 'put').mockRejectedValueOnce({ status: 500, message: 'Simulated Disk Failure' });
          
          try {
              await getPulseLedgerDB().put(lEntry as any);
-             expect.fail("Should have thrown");
+             throw new Error("Should have thrown");
          } catch(e) {
              // System catches ledger failure and reroutes to quarantine
-             await quarantineEntry(lEntry, 'ledger_write_failure', JSON.stringify(e));
+             await quarantineEntry(lEntry, 'tamper_detected', JSON.stringify(e));
          }
 
          const allQ = await getQuarantineDB().allDocs({include_docs: true});

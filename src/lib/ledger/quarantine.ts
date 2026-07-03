@@ -1,5 +1,5 @@
 import { LedgerEntry } from "./chain";
-import { quarantineDB, pulseLedgerDB } from "../db/client";
+import { getQuarantineDB, getPulseLedgerDB } from "../db/client";
 
 export interface QuarantineEntry extends LedgerEntry {
     reason: 'hash_mismatch' | 'tamper_detected';
@@ -39,7 +39,8 @@ export async function quarantineEntry(
 
     delete quarantined._rev;
 
-    await quarantineDB.put(quarantined);
+    const db = getQuarantineDB();
+    await db.put(quarantined);
     return quarantined;
 }
 
@@ -56,6 +57,7 @@ export async function createSegmentAnchor(
         end_ts
     };
 
-    await pulseLedgerDB.put(anchor);
+    const db = getPulseLedgerDB();
+    await db.put(anchor);
     return anchor;
 }

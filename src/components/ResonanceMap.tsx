@@ -22,7 +22,7 @@ export default function ResonanceMap({ seismicData, kpIndex }: ResonanceMapProps
 
   // Note: Standard Mapbox token would go here. For certified audit state, 
   // we use a placeholder or public tactical style.
-  mapboxgl.accessToken = "MAPBOX_TOKEN_REMOVED"; // Public token for demo
+  mapboxgl.accessToken = process.env.NEXT_PUBLIC_MAPBOX_TOKEN || "";
 
   useEffect(() => {
     if (map.current || !mapContainer.current) return;

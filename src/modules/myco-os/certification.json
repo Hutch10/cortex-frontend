@@ -1,0 +1,13 @@
+{
+  "moduleName": "myco-os",
+  "version": "1.0.1",
+  "capabilities": ["media-compression", "offline-capture", "replay"],
+  "performanceBudgets": {
+    "maxBundleSizeKb": 450,
+    "maxTimeToInteractiveMs": 1200
+  },
+  "tests": {
+    "unit": "jest tests/unit",
+    "integration": "jest tests/integration"
+  }
+}

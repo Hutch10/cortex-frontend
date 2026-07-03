@@ -40,6 +40,6 @@ describe("Persistence Corruption: Ledger Tamper Detection", () => {
         const dbQ = getQuarantineDB();
         const allQ = await dbQ.allDocs({include_docs: true});
         expect(allQ.rows.length).toBe(1);
-        expect((allQ.rows[0].doc as const).reason).toBe("tamper_detected");
+        expect((allQ.rows[0].doc as { reason?: string })?.reason).toBe("tamper_detected");
     });
 });
