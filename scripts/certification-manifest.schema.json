@@ -1,0 +1,29 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Module Certification Manifest",
+  "type": "object",
+  "properties": {
+    "moduleName": { "type": "string" },
+    "version": { "type": "string" },
+    "capabilities": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "List of capabilities like 'media-compression', 'offline-capture', 'replay'."
+    },
+    "performanceBudgets": {
+      "type": "object",
+      "properties": {
+        "maxBundleSizeKb": { "type": "number" },
+        "maxTimeToInteractiveMs": { "type": "number" }
+      }
+    },
+    "tests": {
+      "type": "object",
+      "properties": {
+        "unit": { "type": "string" },
+        "integration": { "type": "string" }
+      }
+    }
+  },
+  "required": ["moduleName", "version", "capabilities", "performanceBudgets"]
+}

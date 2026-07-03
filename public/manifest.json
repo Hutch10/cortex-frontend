@@ -1,0 +1,16 @@
+{
+  "name": "Myco OS",
+  "short_name": "Myco",
+  "description": "Cortex-powered field observation module",
+  "start_url": "/myco/capture",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#0070f3",
+  "icons": [
+    {
+      "src": "/favicon.ico",
+      "sizes": "64x64",
+      "type": "image/x-icon"
+    }
+  ]
+}
