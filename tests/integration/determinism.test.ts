@@ -21,7 +21,7 @@ async function runOrchestrationLoop(signalId: any, rawSamples: { ts: string, val
         
         // Fetch queue
         const allQ = await getVortexQueueDB().allDocs({include_docs: true});
-        const qEntry = allQ.rows.find(r => r.id.startsWith("queue::") && (r.doc as any).status === 'pending');
+        const qEntry = allQ.rows.find((r: { id: string; doc?: any }) => r.id.startsWith("queue::") && (r.doc as any).status === 'pending');
         if (!qEntry) continue;
         
         const doc: any = qEntry.doc;
@@ -87,14 +87,14 @@ describe("Determinism and Integration Suites", () => {
         // 12 points, 1 is duplicate and will be skipped by enqueueSample idempotency marker
         expect(results.length).toBe(11);
         
-        const outlier = results.find(r => r.deviation.value === 50);
+        const outlier = results.find((r: import("../../src/lib/engine/window").ComputationResult) => r.deviation.value === 50);
         expect(outlier).toBeDefined();
         // Since sample length is 10, confidence logic hits minimum window.
         expect(outlier!.confidence).toBeGreaterThanOrEqual(0);
         
         // Ledger should have all entries
         const allLedger = await getPulseLedgerDB().allDocs({include_docs: true});
-        const validEntries = allLedger.rows.filter(r => r.id.startsWith("ledger::"));
+        const validEntries = allLedger.rows.filter((r: { id: string; doc?: any }) => r.id.startsWith("ledger::"));
         expect(validEntries.length).toBe(11);
     });
 
@@ -115,9 +115,9 @@ describe("Determinism and Integration Suites", () => {
         const A_results = await runOrchestrationLoop('seismic_count', dataset);
         
         const allLedgerA = await getPulseLedgerDB().allDocs({include_docs: true});
-        const A_hashes = allLedgerA.rows.map(r => (r.doc as any).hash);
+        const A_hashes = allLedgerA.rows.map((r: { id: string; doc?: any }) => (r.doc as any).hash);
         console.log("REPLAY_BEFORE_HASHES:", JSON.stringify(A_hashes));
-        const A_signatures = allLedgerA.rows.map(r => (r.doc as any).signature);
+        const A_signatures = allLedgerA.rows.map((r: { id: string; doc?: any }) => (r.doc as any).signature);
         
         // Wipe again
         let all = await getQuarantineDB().allDocs({include_docs: true});
@@ -144,9 +144,9 @@ describe("Determinism and Integration Suites", () => {
         
         // Ledger Hashes must match EXACTLY representing absolute determinism
         const allLedgerB = await getPulseLedgerDB().allDocs({include_docs: true});
-        const B_hashes = allLedgerB.rows.map(r => (r.doc as any).hash);
+        const B_hashes = allLedgerB.rows.map((r: { id: string; doc?: any }) => (r.doc as any).hash);
         console.log("REPLAY_AFTER_HASHES: ", JSON.stringify(B_hashes));
-        const B_signatures = allLedgerB.rows.map(r => (r.doc as any).signature);
+        const B_signatures = allLedgerB.rows.map((r: { id: string; doc?: any }) => (r.doc as any).signature);
 
         expect(A_hashes.length).toBe(B_hashes.length);
         for (let i = 0; i < A_hashes.length; i++) {

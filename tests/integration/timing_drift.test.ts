@@ -28,7 +28,7 @@ describe("Timing Drift Reality Engine", () => {
         await Promise.all(promises);
         
         const allQ = await getVortexQueueDB().allDocs({include_docs: true});
-        const pending = allQ.rows.filter(r => r.id.startsWith("queue::") && (r.doc as any).status === 'pending');
+        const pending = allQ.rows.filter((r: { id: string; doc?: any }) => r.id.startsWith("queue::") && (r.doc as any).status === 'pending');
         
         // Assert some were rejected dynamically
         expect(pending.length).toBeLessThan(50);

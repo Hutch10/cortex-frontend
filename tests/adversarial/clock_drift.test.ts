@@ -37,7 +37,7 @@ describe("Adversarial Clock Drift Reality", () => {
         await enqueueSample(source, futureTs, { value: 10 }, arrivalClock);
         
         const all = await vortexQueueDB.allDocs({ include_docs: true });
-        const entry = all.rows.find(r => r.id.startsWith("queue::"));
+        const entry = all.rows.find((r: { id: string; doc?: any }) => r.id.startsWith("queue::"));
         expect(entry).toBeDefined();
         expect((entry!.doc as any).status).toBe("rejected");
         expect((entry!.doc as any).reason).toContain("Clock drift exceeded");
@@ -50,7 +50,7 @@ describe("Adversarial Clock Drift Reality", () => {
         await enqueueSample(source, sampleTs, { value: 20 }, arrivalClock);
 
         const all = await vortexQueueDB.allDocs({ include_docs: true });
-        const entry = all.rows.find(r => (r.doc as any).status === 'rejected' && (r.doc as any).ts_raw === sampleTs);
+        const entry = all.rows.find((r: { id: string; doc?: any }) => (r.doc as any).status === 'rejected' && (r.doc as any).ts_raw === sampleTs);
         expect(entry).toBeDefined();
     });
 
@@ -62,7 +62,7 @@ describe("Adversarial Clock Drift Reality", () => {
         await enqueueSample(source, sampleTs, { value: 30 }, arrivalClock);
         
         const all = await vortexQueueDB.allDocs({ include_docs: true });
-        const entry = all.rows.find(r => (r.doc as any).status === 'pending' && (r.doc as any).ts_raw === sampleTs);
+        const entry = all.rows.find((r: { id: string; doc?: any }) => (r.doc as any).status === 'pending' && (r.doc as any).ts_raw === sampleTs);
         expect(entry).toBeDefined();
     });
 });

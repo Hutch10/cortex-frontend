@@ -30,19 +30,24 @@ async function runWorker() {
             const { trace_id } = await enqueueSample(source, ts, { value: parseFloat(value) }, clock);
             process.send?.({ status: 'done', trace_id });
             return;
-        } catch (e: any) {
-            const msg = (e.message || '').toLowerCase();
-            if (msg.includes('lock') || msg.includes('busy') || msg.includes('io error')) {
-                await new Promise((r: any) => setTimeout(r, 1000 + Math.random() * 2000));
-                continue;
+        } catch (e) {
+            if (e instanceof Error) {
+                const eCast = e as Error & { status?: number, trace_id?: string };
+                const msg = (eCast.message || '').toLowerCase();
+                if (msg.includes('lock') || msg.includes('busy') || msg.includes('io error')) {
+                    await new Promise((r: (value: unknown) => void) => setTimeout(r, 1000 + Math.random() * 2000));
+                    continue;
+                }
+                if (eCast.status === 409 && eCast.trace_id) {
+                   process.send?.({ status: 'done', trace_id: eCast.trace_id });
+                   return;
+                }
+                process.send?.({ status: 'error', message: eCast.message, stack: eCast.stack });
+                process.exit(1);
+            } else {
+                process.send?.({ status: 'error', message: String(e) });
+                process.exit(1);
             }
-            // If it's a conflict but we got the trace_id, that's a partial success for our proof
-            if (e.status === 409 && e.trace_id) {
-               process.send?.({ status: 'done', trace_id: e.trace_id });
-               return;
-            }
-            process.send?.({ status: 'error', message: e.message, stack: e.stack });
-            process.exit(1);
         }
     }
     process.send?.({ status: 'error', message: 'Max retries reached' });
