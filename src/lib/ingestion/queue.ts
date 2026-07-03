@@ -1,8 +1,8 @@
 import { SYSTEM_CONSTANTS } from "../constants";
-import { vortexQueueDB } from "../db/client";
+import { getVortexQueueDB } from "../db/client";
 import { normalizeTimestamp } from "./normalization";
 import { validateSample } from "./validator";
-import { createHash } from 'crypto';
+import { createHash, randomUUID } from 'crypto';
 
 import { Clock, defaultClock } from "../engine/clock";
 
@@ -16,14 +16,23 @@ export interface QueueEntry {
   ts_norm: number;     
   payload: { value: number | null };
   status: IngestionStatus;
-  reason?: string;     
+  reason?: string;
+  trace_id: string;    // UUID v4 for observability/tracing
+  parent_trace_id?: string; // Link to prior attempt/retry
 }
 
 function computeIdempotencyKey(source: string, ts_norm: number): string {
     return createHash(SYSTEM_CONSTANTS.HASH_ALGO).update(`${source}||${ts_norm}`).digest('hex');
 }
 
-export async function enqueueSample(source: SignalID, ts_raw: string, payload: any, clock: Clock = defaultClock): Promise<void> {
+export async function enqueueSample(
+    source: SignalID, 
+    ts_raw: string, 
+    payload: any, 
+    clock: Clock = defaultClock,
+    parent_trace_id?: string
+): Promise<{ trace_id: string }> {
+    const trace_id = require('crypto').randomUUID();
     const now_utc = clock.now();
     let ts_norm, is_drifting;
     
@@ -33,22 +42,25 @@ export async function enqueueSample(source: SignalID, ts_raw: string, payload: a
         is_drifting = normRes.is_drifting;
     } catch (err: any) {
         console.error("Timestamp format rejection", err);
-        return; 
+        return { trace_id };
     }
 
     if (is_drifting) {
         console.warn(`Clock drift > 30s detected for source ${source}. Sample rejected.`);
         const key = computeIdempotencyKey(source, ts_norm);
-        await vortexQueueDB.put({
-            _id: `queue::${source}::${ts_norm}`,
+        const db = getVortexQueueDB();
+        await db.put({
+            _id: `queue::${source}::${ts_norm}::rejected::${trace_id}`,
             source,
             ts_raw,
             ts_norm,
             payload,
             status: 'rejected',
-            reason: "Clock drift exceeded 30s tolerance"
+            reason: "Clock drift exceeded 30s tolerance",
+            trace_id,
+            parent_trace_id
         }).catch(e => { if (e.status !== 409) throw e; });
-        return;
+        return { trace_id };
     }
 
     const { valid, errors } = validateSample(source, payload);
@@ -58,10 +70,11 @@ export async function enqueueSample(source: SignalID, ts_raw: string, payload: a
 
     // Deduplication check
     try {
-        await vortexQueueDB.get(sampleId);
-        // Exists, reject duplicate
-        console.warn(`Duplicate sample detected for ${source} at ${ts_norm}`);
-        return;
+        const db = getVortexQueueDB();
+        await db.get(sampleId);
+        // Exists, reject duplicate but log the trace attempt for forensic analysis
+        console.warn(`Duplicate sample detected for ${source} at ${ts_norm} (Trace: ${trace_id})`);
+        return { trace_id };
     } catch (e: any) {
         if (e.status !== 404) {
             throw e;
@@ -70,16 +83,18 @@ export async function enqueueSample(source: SignalID, ts_raw: string, payload: a
 
     // Write a marker to ensure deduplication (idempotency)
     try {
-        await vortexQueueDB.put({
+        const db = getVortexQueueDB();
+        await db.put({
             _id: sampleId,
             source,
             ts_norm,
-            inserted_at: now_utc
+            inserted_at: now_utc,
+            trace_id // First successful trace to win the race
         });
     } catch (e: any) {
         if (e.status === 409) {
-             console.warn(`Duplicate sample race conflict mapped for ${source} at ${ts_norm}`);
-             return;
+             console.warn(`Duplicate sample race conflict mapped for ${source} at ${ts_norm} (Trace: ${trace_id})`);
+             return { trace_id };
         }
         throw e;
     }
@@ -93,22 +108,26 @@ export async function enqueueSample(source: SignalID, ts_raw: string, payload: a
         ts_norm,
         payload: { value: valid ? payload.value : null },
         status: valid ? 'pending' : 'rejected',
-        reason: valid ? undefined : JSON.stringify(errors)
+        reason: valid ? undefined : JSON.stringify(errors),
+        trace_id,
+        parent_trace_id
     };
 
     try {
-        await vortexQueueDB.put(entry);
+        const db = getVortexQueueDB();
+        await db.put(entry);
     } catch (e: any) {
-        if (e.status === 409) return;
+        if (e.status === 409) return { trace_id };
         throw e;
     }
+    return { trace_id };
 }
 
 export async function insertPlaceholder(source: SignalID, ts_norm: number): Promise<void> {
     const queueId = `queue::${source}::${ts_norm}`;
 
     try {
-        await vortexQueueDB.get(queueId);
+        await getVortexQueueDB().get(queueId);
         // Already exists
         return;
     } catch (e: any) {
@@ -121,10 +140,12 @@ export async function insertPlaceholder(source: SignalID, ts_norm: number): Prom
         ts_raw: new Date(ts_norm).toISOString(),
         ts_norm,
         payload: { value: null },
-        status: 'missing'
+        status: 'missing',
+        trace_id: `missing-${source}-${ts_norm}`
     };
     try {
-        await vortexQueueDB.put(entry);
+        const db = getVortexQueueDB();
+        await db.put(entry);
     } catch (e: any) {
         if (e.status === 409) return;
         throw e;
