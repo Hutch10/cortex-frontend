@@ -1,5 +1,5 @@
 import { vi, describe, it, expect, beforeEach } from "vitest";
-import { vortexQueueDB, pulseLedgerDB, quarantineDB } from "../../src/lib/db/client";
+import { getVortexQueueDB, getPulseLedgerDB, getQuarantineDB } from "../../src/lib/db/client";
 import { insertPlaceholder, enqueueSample } from "../../src/lib/ingestion/queue";
 import { verifyLedgerEntry, createLedgerEntry } from "../../src/lib/ledger/chain";
 import { processWindow, ComputationResult } from "../../src/lib/engine/window";
@@ -8,22 +8,22 @@ import { DeterministicTestClock } from "../../src/lib/engine/clock";
 describe("Certification Branch Coverage Extension", () => {
     beforeEach(async () => {
         try {
-            let all = await vortexQueueDB.allDocs({include_docs: true});
-            for (let row of all.rows) await vortexQueueDB.remove(row.doc as any);
-            all = await pulseLedgerDB.allDocs({include_docs: true});
-            for (let row of all.rows) await pulseLedgerDB.remove(row.doc as any);
+            let all = await getVortexQueueDB().allDocs({include_docs: true});
+            for (let row of all.rows) await getVortexQueueDB().remove(row.doc as any);
+            all = await getPulseLedgerDB().allDocs({include_docs: true});
+            for (let row of all.rows) await getPulseLedgerDB().remove(row.doc as any);
         } catch(e) {}
     });
 
     it("triggers queue.ts early exit in insertPlaceholder", async () => {
         const ts = 123456789;
         // 1. Insert manually to create collision
-        await vortexQueueDB.put({ _id: `queue::kp_index::${ts}`, status: 'pending' });
+        await getVortexQueueDB().put({ _id: `queue::kp_index::${ts}`, status: 'pending' });
         
         // 2. Call insertPlaceholder - should trigger 'return' branch (line 103)
         await insertPlaceholder('kp_index', ts);
         
-        const doc = await vortexQueueDB.get(`queue::kp_index::${ts}`);
+        const doc = await getVortexQueueDB().get(`queue::kp_index::${ts}`);
         expect((doc as any).status).toBe('pending'); // Marker should NOT have overwritten it to 'missing'
     });
 
@@ -65,7 +65,7 @@ describe("Certification Branch Coverage Extension", () => {
     it("triggers queue.ts fatal error on marker write", async () => {
         // hits line 74
         const clock = new DeterministicTestClock(1000000);
-        const putSpy = vi.spyOn(vortexQueueDB, 'put').mockRejectedValueOnce({ status: 500, message: "FATAL_DISK_ERROR" });
+        const putSpy = vi.spyOn(getVortexQueueDB(), 'put').mockRejectedValueOnce({ status: 500, message: "FATAL_DISK_ERROR" });
         
         await expect(enqueueSample('kp_index', new Date(1000000).toISOString(), { value: 1 }, clock))
             .rejects.toThrow("FATAL_DISK_ERROR");

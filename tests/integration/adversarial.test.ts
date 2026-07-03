@@ -1,16 +1,16 @@
 import { validateSample } from "../../src/lib/ingestion/validator";
 import { enqueueSample } from "../../src/lib/ingestion/queue";
 import { DeterministicTestClock } from "../../src/lib/engine/clock";
-import { vortexQueueDB } from "../../src/lib/db/client";
+import { getVortexQueueDB } from "../../src/lib/db/client";
 import { signPayload, verifySignature } from "../../src/lib/ledger/audit";
 import { vi } from "vitest";
 
 describe("Adversarial Engine & Parity Tests", () => {
     beforeEach(async () => {
         try {
-            const allDocs = await vortexQueueDB.allDocs({include_docs: true});
+            const allDocs = await getVortexQueueDB().allDocs({include_docs: true});
             for (let row of allDocs.rows) {
-                await vortexQueueDB.remove(row.doc as any);
+                await getVortexQueueDB().remove(row.doc as any);
             }
         } catch(e) {}
     });
@@ -40,7 +40,7 @@ describe("Adversarial Engine & Parity Tests", () => {
             // exactly +30s drift (100000000 + 30000)
             await enqueueSample('seismic_count', new Date(100030000).toISOString(), { value: 5 }, clock);
             
-            const allQ = await vortexQueueDB.allDocs({include_docs: true});
+            const allQ = await getVortexQueueDB().allDocs({include_docs: true});
             expect(allQ.rows.length).toBeGreaterThan(0);
         });
 
@@ -50,7 +50,7 @@ describe("Adversarial Engine & Parity Tests", () => {
             // strictly > 30s
             await enqueueSample('seismic_count', new Date(100031000).toISOString(), { value: 5 }, clock);
             
-            const allQ = await vortexQueueDB.allDocs({include_docs: true});
+            const allQ = await getVortexQueueDB().allDocs({include_docs: true});
             // Should be 1 entry (the rejection record)
             expect(allQ.rows.length).toBe(1);
             expect((allQ.rows[0].doc as any).status).toBe('rejected');
@@ -59,7 +59,7 @@ describe("Adversarial Engine & Parity Tests", () => {
         it("gracefully catches completely broken timestamp formats", async () => {
              const clock = new DeterministicTestClock(100000000);
              await enqueueSample('seismic_count', "bogus-time-string", { value: 5 }, clock);
-             const allQ = await vortexQueueDB.allDocs({include_docs: true});
+             const allQ = await getVortexQueueDB().allDocs({include_docs: true});
              expect(allQ.rows.length).toBe(0);
         });
 
@@ -67,7 +67,7 @@ describe("Adversarial Engine & Parity Tests", () => {
              const clock = new DeterministicTestClock(123456789);
 
              // First put is marker -> succeed. Second put is entry -> throw 409.
-             const putSpy = vi.spyOn(vortexQueueDB, 'put');
+             const putSpy = vi.spyOn(getVortexQueueDB(), 'put');
              putSpy.mockResolvedValueOnce({ ok: true, id: "test", rev: "1" } as any);
              putSpy.mockRejectedValueOnce({ status: 409, message: "Conflict Entry" });
              
@@ -75,7 +75,7 @@ describe("Adversarial Engine & Parity Tests", () => {
              putSpy.mockRestore();
 
              // First put is marker -> succeed. Second put is entry -> throw 500.
-             const putSpy500 = vi.spyOn(vortexQueueDB, 'put');
+             const putSpy500 = vi.spyOn(getVortexQueueDB(), 'put');
              putSpy500.mockResolvedValueOnce({ ok: true, id: "test", rev: "1" } as any);
              putSpy500.mockRejectedValueOnce({ status: 500, message: "Fatal DB Write Error" });
              
@@ -83,27 +83,27 @@ describe("Adversarial Engine & Parity Tests", () => {
                  .rejects.toThrow("Fatal DB Write Error");
              putSpy500.mockRestore();
 
-             const getSpy = vi.spyOn(vortexQueueDB, 'get').mockRejectedValueOnce({ status: 500, message: "Fatal DB Read Error" });
+             const getSpy = vi.spyOn(getVortexQueueDB(), 'get').mockRejectedValueOnce({ status: 500, message: "Fatal DB Read Error" });
              await expect(enqueueSample('seismic_count', new Date(123456800).toISOString(), { value: 5 }, clock))
                  .rejects.toThrow("Fatal DB Read Error");
              getSpy.mockRestore();
              
              const { insertPlaceholder } = await import("../../src/lib/ingestion/queue");
 
-             const getSpyNotFound = vi.spyOn(vortexQueueDB, 'get').mockRejectedValueOnce({ status: 404 });
-             const putSpyConflict = vi.spyOn(vortexQueueDB, 'put').mockRejectedValueOnce({ status: 409 });
+             const getSpyNotFound = vi.spyOn(getVortexQueueDB(), 'get').mockRejectedValueOnce({ status: 404 });
+             const putSpyConflict = vi.spyOn(getVortexQueueDB(), 'put').mockRejectedValueOnce({ status: 409 });
              await insertPlaceholder('seismic_count', 987654321); // should gracefully handle 409
 
              getSpyNotFound.mockRestore();
              putSpyConflict.mockRestore();
 
-             const getSpy2 = vi.spyOn(vortexQueueDB, 'get').mockRejectedValueOnce({ status: 500, message: "Fatal DB Read Error" });
+             const getSpy2 = vi.spyOn(getVortexQueueDB(), 'get').mockRejectedValueOnce({ status: 500, message: "Fatal DB Read Error" });
              await expect(insertPlaceholder('seismic_count', 987654321))
                  .rejects.toThrow("Fatal DB Read Error");
              getSpy2.mockRestore();
 
-             const getSpyNotFound2 = vi.spyOn(vortexQueueDB, 'get').mockRejectedValueOnce({ status: 404 });
-             const putSpy2 = vi.spyOn(vortexQueueDB, 'put').mockRejectedValueOnce({ status: 500, message: "Fatal DB Write Error" });
+             const getSpyNotFound2 = vi.spyOn(getVortexQueueDB(), 'get').mockRejectedValueOnce({ status: 404 });
+             const putSpy2 = vi.spyOn(getVortexQueueDB(), 'put').mockRejectedValueOnce({ status: 500, message: "Fatal DB Write Error" });
              await expect(insertPlaceholder('seismic_count', 987654322))
                  .rejects.toThrow("Fatal DB Write Error");
              getSpyNotFound2.mockRestore();

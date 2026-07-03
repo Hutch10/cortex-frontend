@@ -1,15 +1,15 @@
 import { computeChainHash, createLedgerEntry, verifyLedgerEntry } from "../../src/lib/ledger/chain";
 import { quarantineEntry, createSegmentAnchor } from "../../src/lib/ledger/quarantine";
-import { quarantineDB, pulseLedgerDB } from "../../src/lib/db/client";
+import { getQuarantineDB, getPulseLedgerDB } from "../../src/lib/db/client";
 
 describe("Forensic Ledger Tests", () => {
 
     beforeEach(async () => {
         try {
-            let all = await quarantineDB.allDocs({include_docs: true});
-            for (let row of all.rows) await quarantineDB.remove(row.doc as any);
-            all = await pulseLedgerDB.allDocs({include_docs: true});
-            for (let row of all.rows) await pulseLedgerDB.remove(row.doc as any);
+            let all = await getQuarantineDB().allDocs({include_docs: true});
+            for (let row of all.rows) await getQuarantineDB().remove(row.doc as any);
+            all = await getPulseLedgerDB().allDocs({include_docs: true});
+            for (let row of all.rows) await getPulseLedgerDB().remove(row.doc as any);
         } catch(e) {}
     });
 
@@ -58,7 +58,7 @@ describe("Forensic Ledger Tests", () => {
              expect(qEntry.segment_id).toBeDefined();
 
              // Check db entry exists without deletion
-             const allQ = await quarantineDB.allDocs({include_docs: true});
+             const allQ = await getQuarantineDB().allDocs({include_docs: true});
              expect(allQ.rows.length).toBe(1);
 
              const anchor = await createSegmentAnchor(qEntry.segment_id, "HASH_1", "1000000", "1000000");
@@ -75,7 +75,7 @@ describe("Forensic Ledger Tests", () => {
 
             expect(q1.segment_id).not.toBe(q2.segment_id);
 
-            const allQ = await quarantineDB.allDocs({include_docs: true});
+            const allQ = await getQuarantineDB().allDocs({include_docs: true});
             expect(allQ.rows.length).toBe(2);
         });
     });

@@ -1,13 +1,13 @@
 import { enqueueSample } from "../../src/lib/ingestion/queue";
 import { RealClock } from "../../src/lib/engine/clock";
-import { vortexQueueDB } from "../../src/lib/db/client";
+import { getVortexQueueDB } from "../../src/lib/db/client";
 
 describe("Timing Drift Reality Engine", () => {
     beforeEach(async () => {
         try {
-            const allDocs = await vortexQueueDB.allDocs({include_docs: true});
+            const allDocs = await getVortexQueueDB().allDocs({include_docs: true});
             for (let row of allDocs.rows) {
-                await vortexQueueDB.remove(row.doc as any);
+                await getVortexQueueDB().remove(row.doc as any);
             }
         } catch(e) {}
     });
@@ -27,7 +27,7 @@ describe("Timing Drift Reality Engine", () => {
         
         await Promise.all(promises);
         
-        const allQ = await vortexQueueDB.allDocs({include_docs: true});
+        const allQ = await getVortexQueueDB().allDocs({include_docs: true});
         const pending = allQ.rows.filter(r => r.id.startsWith("queue::") && (r.doc as any).status === 'pending');
         
         // Assert some were rejected dynamically

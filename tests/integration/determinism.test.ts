@@ -2,7 +2,7 @@ import { enqueueSample } from "../../src/lib/ingestion/queue";
 import { processWindow, ComputationResult } from "../../src/lib/engine/window";
 import { createLedgerEntry } from "../../src/lib/ledger/chain";
 import { quarantineEntry } from "../../src/lib/ledger/quarantine";
-import { vortexQueueDB, pulseLedgerDB, quarantineDB } from "../../src/lib/db/client";
+import { getVortexQueueDB, getPulseLedgerDB, getQuarantineDB } from "../../src/lib/db/client";
 
 import { DeterministicTestClock } from "../../src/lib/engine/clock";
 
@@ -20,7 +20,7 @@ async function runOrchestrationLoop(signalId: any, rawSamples: { ts: string, val
         await enqueueSample(signalId, sample.ts, { value: sample.val }, testClock);
         
         // Fetch queue
-        const allQ = await vortexQueueDB.allDocs({include_docs: true});
+        const allQ = await getVortexQueueDB().allDocs({include_docs: true});
         const qEntry = allQ.rows.find(r => r.id.startsWith("queue::") && (r.doc as any).status === 'pending');
         if (!qEntry) continue;
         
@@ -40,13 +40,13 @@ async function runOrchestrationLoop(signalId: any, rawSamples: { ts: string, val
 
         // 4. Ledger Write
         const lEntry = await createLedgerEntry(comp, last_hash);
-        await pulseLedgerDB.put(lEntry);
+        await getPulseLedgerDB().put(lEntry);
         
         last_hash = lEntry.hash;
         
         // Set queue status to processed
         doc.status = 'processed';
-        await vortexQueueDB.put(doc);
+        await getVortexQueueDB().put(doc);
     }
     
     return results;
@@ -56,12 +56,12 @@ describe("Determinism and Integration Suites", () => {
     
     beforeEach(async () => {
         try {
-            let all = await quarantineDB.allDocs({include_docs: true});
-            for (let row of all.rows) await quarantineDB.remove(row.doc as any);
-            all = await pulseLedgerDB.allDocs({include_docs: true});
-            for (let row of all.rows) await pulseLedgerDB.remove(row.doc as any);
-            all = await vortexQueueDB.allDocs({include_docs: true});
-            for (let row of all.rows) await vortexQueueDB.remove(row.doc as any);
+            let all = await getQuarantineDB().allDocs({include_docs: true});
+            for (let row of all.rows) await getQuarantineDB().remove(row.doc as any);
+            all = await getPulseLedgerDB().allDocs({include_docs: true});
+            for (let row of all.rows) await getPulseLedgerDB().remove(row.doc as any);
+            all = await getVortexQueueDB().allDocs({include_docs: true});
+            for (let row of all.rows) await getVortexQueueDB().remove(row.doc as any);
         } catch(e) {}
     });
 
@@ -93,7 +93,7 @@ describe("Determinism and Integration Suites", () => {
         expect(outlier!.confidence).toBeGreaterThanOrEqual(0);
         
         // Ledger should have all entries
-        const allLedger = await pulseLedgerDB.allDocs({include_docs: true});
+        const allLedger = await getPulseLedgerDB().allDocs({include_docs: true});
         const validEntries = allLedger.rows.filter(r => r.id.startsWith("ledger::"));
         expect(validEntries.length).toBe(11);
     });
@@ -102,30 +102,30 @@ describe("Determinism and Integration Suites", () => {
         const A_results = await runOrchestrationLoop('seismic_count', dataset);
         
         // using the exported ones, but actually recreate logic needs clean start
-        let all = await quarantineDB.allDocs({include_docs: true});
-        for (let row of all.rows) await quarantineDB.remove(row.doc as any);
-        all = await pulseLedgerDB.allDocs({include_docs: true});
-        for (let row of all.rows) await pulseLedgerDB.remove(row.doc as any);
-        all = await vortexQueueDB.allDocs({include_docs: true});
-        for (let row of all.rows) await vortexQueueDB.remove(row.doc as any);
+        let all = await getQuarantineDB().allDocs({include_docs: true});
+        for (let row of all.rows) await getQuarantineDB().remove(row.doc as any);
+        all = await getPulseLedgerDB().allDocs({include_docs: true});
+        for (let row of all.rows) await getPulseLedgerDB().remove(row.doc as any);
+        all = await getVortexQueueDB().allDocs({include_docs: true});
+        for (let row of all.rows) await getVortexQueueDB().remove(row.doc as any);
     });
     
     it("Replay MUST yield perfectly identical outputs (Verification)", async () => {
         // Run once
         const A_results = await runOrchestrationLoop('seismic_count', dataset);
         
-        const allLedgerA = await pulseLedgerDB.allDocs({include_docs: true});
+        const allLedgerA = await getPulseLedgerDB().allDocs({include_docs: true});
         const A_hashes = allLedgerA.rows.map(r => (r.doc as any).hash);
         console.log("REPLAY_BEFORE_HASHES:", JSON.stringify(A_hashes));
         const A_signatures = allLedgerA.rows.map(r => (r.doc as any).signature);
         
         // Wipe again
-        let all = await quarantineDB.allDocs({include_docs: true});
-        for (let row of all.rows) await quarantineDB.remove(row.doc as any);
-        all = await pulseLedgerDB.allDocs({include_docs: true});
-        for (let row of all.rows) await pulseLedgerDB.remove(row.doc as any);
-        all = await vortexQueueDB.allDocs({include_docs: true});
-        for (let row of all.rows) await vortexQueueDB.remove(row.doc as any);
+        let all = await getQuarantineDB().allDocs({include_docs: true});
+        for (let row of all.rows) await getQuarantineDB().remove(row.doc as any);
+        all = await getPulseLedgerDB().allDocs({include_docs: true});
+        for (let row of all.rows) await getPulseLedgerDB().remove(row.doc as any);
+        all = await getVortexQueueDB().allDocs({include_docs: true});
+        for (let row of all.rows) await getVortexQueueDB().remove(row.doc as any);
 
         // Run second time
         const B_results = await runOrchestrationLoop('seismic_count', dataset);
@@ -143,7 +143,7 @@ describe("Determinism and Integration Suites", () => {
         }
         
         // Ledger Hashes must match EXACTLY representing absolute determinism
-        const allLedgerB = await pulseLedgerDB.allDocs({include_docs: true});
+        const allLedgerB = await getPulseLedgerDB().allDocs({include_docs: true});
         const B_hashes = allLedgerB.rows.map(r => (r.doc as any).hash);
         console.log("REPLAY_AFTER_HASHES: ", JSON.stringify(B_hashes));
         const B_signatures = allLedgerB.rows.map(r => (r.doc as any).signature);
@@ -158,12 +158,12 @@ describe("Determinism and Integration Suites", () => {
     it("preserves identical quarantine behavior offline", async () => {
          const results = await runOrchestrationLoop('seismic_count', dataset.slice(0, 3));
          
-         const allL = await pulseLedgerDB.allDocs({include_docs: true});
+         const allL = await getPulseLedgerDB().allDocs({include_docs: true});
          const firstDoc = allL.rows[0].doc! as any;
          
          await quarantineEntry(firstDoc, "hash_mismatch", "TAMPER_HASH");
          
-         const allQ = await quarantineDB.allDocs();
+         const allQ = await getQuarantineDB().allDocs();
          expect(allQ.rows.length).toBe(1);
     });
 

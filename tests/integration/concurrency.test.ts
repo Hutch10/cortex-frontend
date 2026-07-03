@@ -1,13 +1,13 @@
 import { enqueueSample } from "../../src/lib/ingestion/queue";
 import { DeterministicTestClock } from "../../src/lib/engine/clock";
-import { vortexQueueDB } from "../../src/lib/db/client";
+import { getVortexQueueDB } from "../../src/lib/db/client";
 
 describe("Concurrency Constraints Engine", () => {
     beforeEach(async () => {
         try {
-            const allDocs = await vortexQueueDB.allDocs({include_docs: true});
+            const allDocs = await getVortexQueueDB().allDocs({include_docs: true});
             for (let row of allDocs.rows) {
-                await vortexQueueDB.remove(row.doc as any);
+                await getVortexQueueDB().remove(row.doc as any);
             }
         } catch(e) {}
     });
@@ -26,7 +26,7 @@ describe("Concurrency Constraints Engine", () => {
 
         await Promise.all(promises);
 
-        const allQ = await vortexQueueDB.allDocs({include_docs: true});
+        const allQ = await getVortexQueueDB().allDocs({include_docs: true});
         const markers = allQ.rows.filter(r => r.id.startsWith("sample::"));
         const queueEntries = allQ.rows.filter(r => r.id.startsWith("queue::"));
         
@@ -53,7 +53,7 @@ describe("Concurrency Constraints Engine", () => {
 
          await Promise.all(promises);
          
-         const allQ = await vortexQueueDB.allDocs({include_docs: true});
+         const allQ = await getVortexQueueDB().allDocs({include_docs: true});
          // We expect 2 distinct queue entries and 2 markers
          const markers = allQ.rows.filter(r => r.id.startsWith("sample::"));
          expect(markers.length).toBe(2);

@@ -1,7 +1,7 @@
 import { enqueueSample, handleOutOfOrder, insertPlaceholder, QueueEntry } from "../../src/lib/ingestion/queue";
 import { normalizeTimestamp } from "../../src/lib/ingestion/normalization";
 import { validateSample } from "../../src/lib/ingestion/validator";
-import { vortexQueueDB } from "../../src/lib/db/client";
+import { getVortexQueueDB } from "../../src/lib/db/client";
 import { SYSTEM_CONSTANTS } from "../../src/lib/constants";
 
 describe("Ingestion Engine Tests", () => {
@@ -9,9 +9,9 @@ describe("Ingestion Engine Tests", () => {
     beforeEach(async () => {
         // Clear DB using the valid method
         try {
-            const allDocs = await vortexQueueDB.allDocs({include_docs: true});
+            const allDocs = await getVortexQueueDB().allDocs({include_docs: true});
             for (let row of allDocs.rows) {
-                await vortexQueueDB.remove(row.doc as any);
+                await getVortexQueueDB().remove(row.doc as any);
             }
         } catch(e) {}
     });
@@ -41,7 +41,7 @@ describe("Ingestion Engine Tests", () => {
     describe("Queue constraints", () => {
         it("enqueues valid sample", async () => {
             await enqueueSample("kp_index", new Date().toISOString(), { value: 3 });
-            const all = await vortexQueueDB.allDocs({include_docs: true});
+            const all = await getVortexQueueDB().allDocs({include_docs: true});
             // We should have a marker and a queue entry
             expect(all.rows.length).toBe(2);
             
@@ -57,7 +57,7 @@ describe("Ingestion Engine Tests", () => {
             await enqueueSample("kp_index", ts, { value: 5 }); // same timestamp, different payload
             
             // Check that only 1 was kept
-            const all = await vortexQueueDB.allDocs({include_docs: true});
+            const all = await getVortexQueueDB().allDocs({include_docs: true});
             const markers = all.rows.filter(r => r.id.startsWith("sample::"));
             expect(markers.length).toBe(1);
         });
@@ -82,7 +82,7 @@ describe("Ingestion Engine Tests", () => {
         it("inserts placeholder", async () => {
             const ts = Date.now();
             await insertPlaceholder("kp_index", ts);
-            const all = await vortexQueueDB.allDocs({include_docs: true});
+            const all = await getVortexQueueDB().allDocs({include_docs: true});
             const qEntry = all.rows.find(r => r.id.startsWith("queue::"));
             expect(qEntry).toBeDefined();
             expect((qEntry!.doc as any).status).toBe('missing');

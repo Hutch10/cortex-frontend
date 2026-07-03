@@ -10,7 +10,7 @@ vi.mock("../../src/lib/db/client", () => {
     };
 });
 
-import { vortexQueueDB, pulseLedgerDB, quarantineDB } from "../../src/lib/db/client";
+import { getVortexQueueDB, getPulseLedgerDB, getQuarantineDB } from "../../src/lib/db/client";
 
 
 import { enqueueSample } from "../../src/lib/ingestion/queue";
@@ -29,7 +29,7 @@ async function runFilesystemLoop(signalId: any, rawSamples: { ts: string, val: n
 
         await enqueueSample(signalId, sample.ts, { value: sample.val }, testClock);
         
-        const allQ = await vortexQueueDB.allDocs({include_docs: true});
+        const allQ = await getVortexQueueDB().allDocs({include_docs: true});
         const qEntry = allQ.rows.find(r => r.id.startsWith("queue::") && (r.doc as any).status === 'pending');
         if (!qEntry) continue;
         
@@ -40,11 +40,11 @@ async function runFilesystemLoop(signalId: any, rawSamples: { ts: string, val: n
         results.push(comp);
 
         const lEntry = await createLedgerEntry(comp, last_hash);
-        await pulseLedgerDB.put(lEntry);
+        await getPulseLedgerDB().put(lEntry);
         last_hash = lEntry.hash;
         
         doc.status = 'processed';
-        await vortexQueueDB.put(doc);
+        await getVortexQueueDB().put(doc);
     }
     return results;
 }
@@ -52,12 +52,12 @@ async function runFilesystemLoop(signalId: any, rawSamples: { ts: string, val: n
 describe("Persistence Reality Engine", () => {
     beforeEach(async () => {
         try {
-            let all = await vortexQueueDB.allDocs({include_docs: true});
-            for (let row of all.rows) await vortexQueueDB.remove(row.doc as any);
-            all = await pulseLedgerDB.allDocs({include_docs: true});
-            for (let row of all.rows) await pulseLedgerDB.remove(row.doc as any);
-            all = await quarantineDB.allDocs({include_docs: true});
-            for (let row of all.rows) await quarantineDB.remove(row.doc as any);
+            let all = await getVortexQueueDB().allDocs({include_docs: true});
+            for (let row of all.rows) await getVortexQueueDB().remove(row.doc as any);
+            all = await getPulseLedgerDB().allDocs({include_docs: true});
+            for (let row of all.rows) await getPulseLedgerDB().remove(row.doc as any);
+            all = await getQuarantineDB().allDocs({include_docs: true});
+            for (let row of all.rows) await getQuarantineDB().remove(row.doc as any);
         } catch(e) {}
     });
 
@@ -84,7 +84,7 @@ describe("Persistence Reality Engine", () => {
         const results = await runFilesystemLoop('seismic_count', dataset);
         expect(results.length).toBe(11); // duplicate stripped
         
-        const allL = await pulseLedgerDB.allDocs({include_docs: true});
+        const allL = await getPulseLedgerDB().allDocs({include_docs: true});
         const hashes = allL.rows.map(r => (r.doc as any).hash);
         expect(hashes.length).toBe(11);
         
@@ -92,8 +92,8 @@ describe("Persistence Reality Engine", () => {
         expect(hashes[0]).toBeDefined();
         
         // Clear before concurrency test to ensure exact marker count of 1 for the new unique ts
-        let all = await vortexQueueDB.allDocs({include_docs: true});
-        for (let row of all.rows) await vortexQueueDB.remove(row.doc as any);
+        let all = await getVortexQueueDB().allDocs({include_docs: true});
+        for (let row of all.rows) await getVortexQueueDB().remove(row.doc as any);
 
         // Concurrency test inside filesystem
         const clock = new DeterministicTestClock(100000000);
@@ -101,7 +101,7 @@ describe("Persistence Reality Engine", () => {
         for (let i = 0; i < 50; i++) promises.push(enqueueSample('seismic_count', new Date(100000000).toISOString(), { value: 7 }, clock));
         await Promise.all(promises);
 
-        const allQ = await vortexQueueDB.allDocs({include_docs: true});
+        const allQ = await getVortexQueueDB().allDocs({include_docs: true});
         const markers = allQ.rows.filter(r => r.id.startsWith("sample::"));
         expect(markers.length).toBe(1); // No race divergence!
     });
