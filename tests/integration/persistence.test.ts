@@ -30,7 +30,7 @@ async function runFilesystemLoop(signalId: any, rawSamples: { ts: string, val: n
         await enqueueSample(signalId, sample.ts, { value: sample.val }, testClock);
         
         const allQ = await getVortexQueueDB().allDocs({include_docs: true});
-        const qEntry = allQ.rows.find((r: { id: string; doc?: any }) => r.id.startsWith("queue::") && (r.doc as any).status === 'pending');
+        const qEntry = allQ.rows.find((r: { id: string; doc?: unknown }) => r.id.startsWith("queue::") && (r.doc as { status?: string })?.status === 'pending');
         if (!qEntry) continue;
         
         const doc: any = qEntry.doc;
@@ -85,7 +85,7 @@ describe("Persistence Reality Engine", () => {
         expect(results.length).toBe(11); // duplicate stripped
         
         const allL = await getPulseLedgerDB().allDocs({include_docs: true});
-        const hashes = allL.rows.map((r: { id: string; doc?: any }) => (r.doc as any).hash);
+        const hashes = allL.rows.map((r: { id: string; doc?: unknown }) => (r.doc as { hash?: string })?.hash);
         expect(hashes.length).toBe(11);
         
         // Exact identical ordering
@@ -102,7 +102,7 @@ describe("Persistence Reality Engine", () => {
         await Promise.all(promises);
 
         const allQ = await getVortexQueueDB().allDocs({include_docs: true});
-        const markers = allQ.rows.filter((r: { id: string; doc?: any }) => r.id.startsWith("sample::"));
+        const markers = allQ.rows.filter((r: { id: string; doc?: unknown }) => r.id.startsWith("sample::"));
         expect(markers.length).toBe(1); // No race divergence!
     });
 });

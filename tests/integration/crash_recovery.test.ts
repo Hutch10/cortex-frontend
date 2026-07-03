@@ -42,7 +42,7 @@ describe("Crash Recovery Engine", () => {
         // System restarts... orchestrator loop should process queue
         const { processWindow } = await import("../../src/lib/engine/window");
         const allQ = await getVortexQueueDB().allDocs({include_docs: true});
-        const pending = allQ.rows.filter((r: { id: string; doc?: any }) => r.id.startsWith("queue::") && (r.doc as any).status === 'pending');
+        const pending = allQ.rows.filter((r: { id: string; doc?: unknown }) => r.id.startsWith("queue::") && (r.doc as { status?: string })?.status === 'pending');
         
         console.log("CRASH_RECOVERY_REPROCESS_START");
         // Re-process
@@ -56,16 +56,16 @@ describe("Crash Recovery Engine", () => {
 
         // We assert no duplicates exist!
         const finalQ = await getVortexQueueDB().allDocs({include_docs: true});
-        const processedSet = finalQ.rows.filter((r: { id: string; doc?: any }) => (r.doc as any).status === 'processed');
+        const processedSet = finalQ.rows.filter((r: { id: string; doc?: unknown }) => (r.doc as { status?: string })?.status === 'processed');
         console.log("POST_CRASH_LEDGER_STATUS: ", processedSet.length, "entires correctly processed");
-        expect(finalQ.rows.filter((r: { id: string; doc?: any }) => (r.doc as any).status === 'pending').length).toBe(0);
+        expect(finalQ.rows.filter((r: { id: string; doc?: unknown }) => (r.doc as { status?: string })?.status === 'pending').length).toBe(0);
         
         // Since we simulate missing, we will simulate queue write using enqueueSample to see if marker prevents it!
         await enqueueSample('seismic_count', tsA, { value: 50 }, clock);
         
         const finalCheck = await getVortexQueueDB().allDocs({include_docs: true});
         // The one we just enqueued should be stopped by the marker!
-        const queuedA = finalCheck.rows.find((r: { id: string; doc?: any }) => r.id === 'queue::seismic_count::100020000');
+        const queuedA = finalCheck.rows.find((r: { id: string; doc?: unknown }) => r.id === 'queue::seismic_count::100020000');
         expect(queuedA).toBeUndefined(); // Marker prevented the duplicate queue entry!
     });
     it("survives catastrophic ledger rejection and quarantines gracefully without crashing orchestration", async () => {

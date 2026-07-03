@@ -36,14 +36,14 @@ describe("Adversarial Failure Injection", () => {
         await expect(enqueueSample(source as any, ts, { value: 10 }, clock)).rejects.toThrow("DISK_FAILURE");
 
         const all = await vortexQueueDB.allDocs({ include_docs: true });
-        const queueEntries = all.rows.filter((r: { id: string; doc?: any }) => r.id.startsWith("queue::"));
+        const queueEntries = all.rows.filter((r: { id: string; doc?: unknown }) => r.id.startsWith("queue::"));
         expect(queueEntries.length).toBe(0);
         
         putSpy.mockRestore();
         await enqueueSample(source as any, ts, { value: 10 }, clock);
         
         const allRetry = await vortexQueueDB.allDocs({ include_docs: true });
-        expect(allRetry.rows.filter((r: { id: string; doc?: any }) => r.id.startsWith("queue::")).length).toBe(1);
+        expect(allRetry.rows.filter((r: { id: string; doc?: unknown }) => r.id.startsWith("queue::")).length).toBe(1);
     });
 
     it("survives 'partial write' state where marker exists but queue entry doesn't", async () => {
@@ -57,7 +57,7 @@ describe("Adversarial Failure Injection", () => {
         await enqueueSample(source as any, ts, { value: 99 }, clock);
         
         const all = await vortexQueueDB.allDocs({ include_docs: true });
-        const queueEntries = all.rows.filter((r: { id: string; doc?: any }) => r.id.startsWith("queue::"));
+        const queueEntries = all.rows.filter((r: { id: string; doc?: unknown }) => r.id.startsWith("queue::"));
         
         expect(queueEntries.length).toBe(0); 
     });

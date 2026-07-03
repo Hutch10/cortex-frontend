@@ -33,7 +33,7 @@ describe("Adversarial Concurrency Stress", () => {
         }
         await Promise.all(promises);
         const allDocs = await mockedVortex.allDocs({ include_docs: true });
-        const entries = allDocs.rows.filter((r: { id: string; doc?: any }) => r.id.startsWith("queue::"));
+        const entries = allDocs.rows.filter((r: { id: string; doc?: unknown }) => r.id.startsWith("queue::"));
         expect(entries.length).toBe(1);
     });
 
@@ -45,8 +45,8 @@ describe("Adversarial Concurrency Stress", () => {
         }
         await Promise.all(promises);
         const allDocs = await mockedVortex.allDocs({ include_docs: true });
-        const queueEntries = allDocs.rows.filter((r: { id: string; doc?: any }) => r.id.startsWith("queue::"));
-        const markerEntries = allDocs.rows.filter((r: { id: string; doc?: any }) => r.id.startsWith("sample::"));
+        const queueEntries = allDocs.rows.filter((r: { id: string; doc?: unknown }) => r.id.startsWith("queue::"));
+        const markerEntries = allDocs.rows.filter((r: { id: string; doc?: unknown }) => r.id.startsWith("sample::"));
 
         expect(markerEntries.length).toBe(1);
         expect(queueEntries.length).toBe(1);
