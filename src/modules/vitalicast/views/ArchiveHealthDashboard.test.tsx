@@ -35,8 +35,8 @@ describe('ArchiveHealthDashboard', () => {
     fireEvent.click(screen.getByText('Run Archive Check'));
 
     await waitFor(() => {
-      expect(screen.getByText('Overall Status: HEALTHY')).toBeInTheDocument();
-      expect(screen.getByText('5')).toBeInTheDocument(); // 5 authoritative records
+      expect(screen.getByText('Overall Status: HEALTHY')).toBeTruthy();
+      expect(screen.getByText('5')).toBeTruthy(); // 5 authoritative records
     });
   });
 
@@ -51,8 +51,8 @@ describe('ArchiveHealthDashboard', () => {
     fireEvent.click(screen.getByText('Run Archive Check'));
 
     await waitFor(() => {
-      expect(screen.getByText('Archive Key Inventory Locked Natively.')).toBeInTheDocument();
-      expect(screen.getByText(/Key inventory enumeration is restricted/i)).toBeInTheDocument();
+      expect(screen.getByText('Archive Key Inventory Locked Natively.')).toBeTruthy();
+      expect(screen.getByText(/Key inventory enumeration is restricted/i)).toBeTruthy();
     });
   });
 
@@ -67,7 +67,7 @@ describe('ArchiveHealthDashboard', () => {
     fireEvent.click(screen.getByText('Run Archive Check'));
 
     await waitFor(() => {
-      expect(screen.getByText('Browser fallback records are non-authoritative development records.')).toBeInTheDocument();
+      expect(screen.getByText('Browser fallback records are non-authoritative development records.')).toBeTruthy();
     });
   });
 
