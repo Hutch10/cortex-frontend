@@ -27,6 +27,7 @@ export interface SecureStoragePlugin {
   appendAddendum(options: AppendAddendumOptions): Promise<{ success: boolean }>;
   readSecureRecord(options: ReadSecureRecordOptions): Promise<{ value: string | null }>;
   enumerateArchiveKeys(options: EnumerateArchiveKeysOptions): Promise<EnumerateArchiveKeysResult>;
+  listArchiveStorageKeys(): Promise<{ keys: string[] }>;
 }
 
 const NativeVitalicastSecureStorage = registerPlugin<SecureStoragePlugin>('VitalicastSecureStorage');
@@ -103,6 +104,18 @@ class WebSecureStorageFallback implements SecureStoragePlugin {
       enumerationStatus: "dev_fallback_active",
       truncated
     };
+  }
+
+  async listArchiveStorageKeys(): Promise<{ keys: string[] }> {
+    console.warn("DEV_NON_AUTHORITATIVE_FALLBACK: listArchiveStorageKeys called");
+    const keys: string[] = [];
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key && (key.startsWith('vitalicast_canonical_') || key.startsWith('vitalicast_addendum_'))) {
+        keys.push(key);
+      }
+    }
+    return { keys: keys.sort() };
   }
 }
 

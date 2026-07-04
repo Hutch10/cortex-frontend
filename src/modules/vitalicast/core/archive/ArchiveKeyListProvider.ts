@@ -1,3 +1,4 @@
+import { VitalicastSecureStorage } from '../bridge/SecureStorageBridge';
 import { Capacitor } from '@capacitor/core';
 
 export type PlatformAuthority =
@@ -24,12 +25,27 @@ export interface ArchiveKeyListProvider {
 
 export class NativeSecureKeyListProviderStub implements ArchiveKeyListProvider {
   public async listAvailableArchiveKeys(): Promise<ArchiveKeyListResult> {
-    return {
-      platformAuthority: "unsupported",
-      records: [],
-      findings: ["native_key_list_provider_unsupported_phase10"],
-      rawPayloadReturned: false,
-    };
+    try {
+      const result = await VitalicastSecureStorage.listArchiveStorageKeys();
+      const records: ArchiveKeyRecord[] = result.keys.map(key => ({
+        storageKey: key,
+        kind: key.startsWith('vitalicast_canonical_') ? 'canonical' : 'addendum',
+        label: key
+      }));
+      return {
+        platformAuthority: "unsupported",
+        records,
+        findings: ["native_key_list_provider_unsupported_phase10"],
+        rawPayloadReturned: false,
+      };
+    } catch (error) {
+      return {
+        platformAuthority: "unsupported",
+        records: [],
+        findings: ["native_key_list_provider_unsupported_phase10", "native_error"],
+        rawPayloadReturned: false,
+      };
+    }
   }
 }
 
