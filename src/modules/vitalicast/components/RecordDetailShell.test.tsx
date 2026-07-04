@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, fireEvent } from '@testing-library/react';
 import { RecordDetailShell } from './RecordDetailShell';
 import { vi, describe, it, expect, beforeEach } from 'vitest';
 
@@ -97,7 +97,7 @@ describe('RecordDetailShell', () => {
     expect(window.location.pathname).not.toContain(key);
   });
 
-  it('raw payload/body/decryptedValue is not rendered by default', async () => {
+  it('raw payload/body/decryptedValue is not rendered by default but is available upon expansion', async () => {
     mockStorage.readSecureRecord.mockResolvedValueOnce({ value: '{ "payload": "SUPER_SECRET_PAYLOAD" }' });
     render(<RecordDetailShell storageKey="vitalicast_canonical_12345" storage={mockStorage} />);
     
@@ -105,8 +105,30 @@ describe('RecordDetailShell', () => {
       expect(screen.getByText(/Record envelope loaded/)).toBeTruthy();
     });
     
-    const text = document.body.textContent || '';
+    let text = document.body.textContent || '';
     expect(text).not.toContain('SUPER_SECRET_PAYLOAD');
+
+    // Expand the payload viewer
+    fireEvent.click(screen.getByText('Raw Record Data'));
+
+    text = document.body.textContent || '';
+    expect(text).toContain('SUPER_SECRET_PAYLOAD');
+  });
+
+  it('expanding RawPayloadViewer does not call verifyRecordIntegrity or new storage reads', async () => {
+    mockStorage.readSecureRecord.mockResolvedValueOnce({ value: '{ "payload": "test" }' });
+    render(<RecordDetailShell storageKey="vitalicast_canonical_12345" storage={mockStorage} />);
+    
+    await waitFor(() => {
+      expect(screen.getByText(/Record envelope loaded/)).toBeTruthy();
+    });
+
+    expect(mockStorage.readSecureRecord).toHaveBeenCalledTimes(1);
+
+    fireEvent.click(screen.getByText('Raw Record Data'));
+
+    // Should not trigger another read
+    expect(mockStorage.readSecureRecord).toHaveBeenCalledTimes(1);
   });
 
   it('no mutation methods are called or imported and prohibited language does not appear', async () => {

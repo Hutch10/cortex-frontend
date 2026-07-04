@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { RecordDetailVerificationSection } from './RecordDetailVerificationSection';
 import { VitalicastSecureStorage } from '../core/bridge/SecureStorageBridge';
+import { RawPayloadViewer } from './RawPayloadViewer';
 
 interface RecordDetailShellProps {
   storageKey: string | null;
@@ -13,6 +14,7 @@ export const RecordDetailShell: React.FC<RecordDetailShellProps> = ({
 }) => {
   const [loading, setLoading] = useState(false);
   const [recordContext, setRecordContext] = useState<any>(null);
+  const [rawPayload, setRawPayload] = useState<string | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   const isValidKey = (key: string | null): boolean => {
@@ -25,6 +27,7 @@ export const RecordDetailShell: React.FC<RecordDetailShellProps> = ({
 
     // Reset local state immediately on key change
     setRecordContext(null);
+    setRawPayload(null);
     setErrorMsg(null);
     setLoading(false);
 
@@ -39,6 +42,7 @@ export const RecordDetailShell: React.FC<RecordDetailShellProps> = ({
         if (!isCancelled) {
           if (response.value) {
             setRecordContext({ loaded: true, partialValue: true });
+            setRawPayload(response.value);
           } else {
             setErrorMsg('Record reference could not be resolved in local storage.');
           }
@@ -76,11 +80,11 @@ export const RecordDetailShell: React.FC<RecordDetailShellProps> = ({
   const prefix = isCanonical ? 'vitalicast_canonical_' : 'vitalicast_addendum_';
   const suffix = storageKey.substring(storageKey.length - 4);
   const maskedKey = storageKey.length > prefix.length + 4 
-    ? `${prefix}…${suffix}`
+    ? `${prefix}?${suffix}`
     : storageKey;
 
   return (
-    <div className="p-4 bg-white border rounded shadow-sm max-w-2xl">
+    <div className="p-4 bg-white border rounded shadow-sm max-w-2xl flex flex-col h-full">
       <h2 className="text-xl font-semibold text-gray-800 mb-2">Record Detail Shell</h2>
       
       <div className="text-sm text-gray-600 mb-4 bg-gray-50 p-2 rounded border border-gray-200">
@@ -88,22 +92,31 @@ export const RecordDetailShell: React.FC<RecordDetailShellProps> = ({
         <p><strong>Reference:</strong> {maskedKey}</p>
       </div>
 
-      {loading ? (
-        <div className="p-4 text-gray-500">Loading envelope context...</div>
-      ) : errorMsg ? (
-        <div className="p-4 text-amber-700 bg-amber-50 rounded border border-amber-200">
-          {errorMsg}
-        </div>
-      ) : recordContext ? (
-        <div className="mb-4 text-sm text-gray-700">
-          Record envelope loaded. Detailed payload display is deferred to a future audited record viewer.
-        </div>
-      ) : null}
+      <div className="flex-1 overflow-y-auto pr-2">
+        {loading ? (
+          <div className="p-4 text-gray-500">Loading envelope context...</div>
+        ) : errorMsg ? (
+          <div className="p-4 text-amber-700 bg-amber-50 rounded border border-amber-200">
+            {errorMsg}
+          </div>
+        ) : recordContext ? (
+          <>
+            <div className="mb-4 text-sm text-gray-700">
+              Record envelope loaded. 
+            </div>
+            
+            {/* Raw Payload Viewer added in Phase 11 */}
+            <RawPayloadViewer payload={rawPayload} />
+          </>
+        ) : null}
 
-      {/* Verification section strictly gated by record presence context */}
-      {recordContext && !loading && !errorMsg && (
-        <RecordDetailVerificationSection storageKey={storageKey} />
-      )}
+        {/* Verification section strictly gated by record presence context */}
+        {recordContext && !loading && !errorMsg && (
+          <div className="mt-6 border-t pt-4">
+            <RecordDetailVerificationSection storageKey={storageKey} />
+          </div>
+        )}
+      </div>
     </div>
   );
 };
