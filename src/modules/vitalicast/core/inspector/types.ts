@@ -24,3 +24,17 @@ export interface ArchiveHealthReport {
   scannedAt: string;
   isAuthoritativeEnvironment: boolean;
 }
+
+export type ArchiveKeyNamespace = "vitalicast_canonical_" | "vitalicast_addendum_";
+export type ArchiveKeyProvenance = "native_keychain" | "dev_fallback_active";
+
+export interface EnumerateArchiveKeysOptions {
+  targetNamespace: ArchiveKeyNamespace;
+}
+
+export interface EnumerateArchiveKeysResult {
+  storageKeys: string[];
+  targetNamespace: ArchiveKeyNamespace;
+  enumerationStatus: ArchiveKeyProvenance;
+  truncated: boolean;
+}

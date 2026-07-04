@@ -1,4 +1,5 @@
 import { registerPlugin } from '@capacitor/core';
+import { EnumerateArchiveKeysOptions, EnumerateArchiveKeysResult } from '../inspector/types';
 
 export interface CreateSecureRecordOptions {
   recordId: string;
@@ -25,6 +26,7 @@ export interface SecureStoragePlugin {
   createSecureRecord(options: CreateSecureRecordOptions): Promise<{ success: boolean }>;
   appendAddendum(options: AppendAddendumOptions): Promise<{ success: boolean }>;
   readSecureRecord(options: ReadSecureRecordOptions): Promise<{ value: string | null }>;
+  enumerateArchiveKeys(options: EnumerateArchiveKeysOptions): Promise<EnumerateArchiveKeysResult>;
 }
 
 const NativeVitalicastSecureStorage = registerPlugin<SecureStoragePlugin>('VitalicastSecureStorage');
@@ -71,6 +73,36 @@ class WebSecureStorageFallback implements SecureStoragePlugin {
     }
     const val = localStorage.getItem(options.storageKey);
     return { value: val };
+  }
+
+  async enumerateArchiveKeys(options: EnumerateArchiveKeysOptions): Promise<EnumerateArchiveKeysResult> {
+    console.warn("DEV_NON_AUTHORITATIVE_FALLBACK: enumerateArchiveKeys called");
+    const allowedNamespaces = ["vitalicast_canonical_", "vitalicast_addendum_"];
+    if (!allowedNamespaces.includes(options.targetNamespace)) {
+      throw new Error("Invalid namespace");
+    }
+
+    const storageKeys: string[] = [];
+    const maxKeys = 1000;
+    let truncated = false;
+
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key && key.startsWith(options.targetNamespace)) {
+        if (storageKeys.length >= maxKeys) {
+          truncated = true;
+          break;
+        }
+        storageKeys.push(key);
+      }
+    }
+
+    return {
+      storageKeys,
+      targetNamespace: options.targetNamespace,
+      enumerationStatus: "dev_fallback_active",
+      truncated
+    };
   }
 }
 

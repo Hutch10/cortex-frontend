@@ -14,20 +14,50 @@ export class ArchiveInspector {
     // We optionally call isAvailable, though it doesn't currently check for enumeration
     await VitalicastSecureStorage.isAvailable();
 
+    let authoritativeRecordCount = 0;
+    let fallbackRecordCount = 0;
+    let addendumCount = 0;
+    let truncated = false;
+    let enumerationStatus = isWeb ? "dev_fallback_active" : "native_keychain";
+    const unsupportedChecks: any[] = [];
+    
+    try {
+      const canonicalRes = await VitalicastSecureStorage.enumerateArchiveKeys({ targetNamespace: "vitalicast_canonical_" });
+      const addendumRes = await VitalicastSecureStorage.enumerateArchiveKeys({ targetNamespace: "vitalicast_addendum_" });
+      
+      if (canonicalRes.enumerationStatus === "native_keychain") {
+        authoritativeRecordCount = canonicalRes.storageKeys.length;
+      } else {
+        fallbackRecordCount = canonicalRes.storageKeys.length;
+      }
+      addendumCount = addendumRes.storageKeys.length;
+      truncated = canonicalRes.truncated || addendumRes.truncated;
+      enumerationStatus = canonicalRes.enumerationStatus;
+    } catch (e) {
+      unsupportedChecks.push({
+        checkName: "secure_storage_key_enumeration_unavailable",
+        reason: "SecureStorageBridge readSecureRecord requires exact keys; enumeration is not exposed."
+      });
+    }
+
+    let status: "healthy" | "warning" | "failed" = "warning";
+    if (unsupportedChecks.length === 0) {
+      if (enumerationStatus === "native_keychain" && !truncated) {
+        status = "healthy";
+      } else {
+        status = "warning";
+      }
+    }
+
     return {
-      status: "warning",
-      authoritativeRecordCount: 0,
-      fallbackRecordCount: 0,
-      addendumCount: 0,
+      status,
+      authoritativeRecordCount,
+      fallbackRecordCount,
+      addendumCount,
       missingFieldFindings: [],
       hashMismatchFindings: [],
       linkageFindings: [],
-      unsupportedChecks: [
-        {
-          checkName: "secure_storage_key_enumeration_unavailable",
-          reason: "SecureStorageBridge readSecureRecord requires exact keys; enumeration is not exposed."
-        }
-      ],
+      unsupportedChecks,
       scannedAt: new Date().toISOString(),
       isAuthoritativeEnvironment: !isWeb
     };
