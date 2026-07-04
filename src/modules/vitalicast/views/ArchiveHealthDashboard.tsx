@@ -32,6 +32,10 @@ export const ArchiveHealthDashboard: React.FC = () => {
         </button>
       </div>
 
+      <div className="p-4 bg-gray-50 border border-gray-200 rounded text-sm text-gray-700">
+        This panel validates data storage structure and provenance layout. It does not monitor or report on physical wellness metrics.
+      </div>
+
       {report && (
         <div className="space-y-4">
           <div className="p-4 border rounded">
