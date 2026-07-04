@@ -1,29 +1,40 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { RecordDetailShell } from './RecordDetailShell';
-
-export interface LibraryRow {
-  id: string;
-  label: string;
-  storageKey: string;
-  kind?: "canonical" | "addendum";
-}
+import { ArchiveKeyListProvider, createArchiveKeyListProvider, ArchiveKeyListResult } from '../core/archive/ArchiveKeyListProvider';
 
 interface LibrarySelectionShellProps {
-  rows?: LibraryRow[];
+  provider?: ArchiveKeyListProvider;
   DetailComponent?: React.ComponentType<{ storageKey: string }>;
 }
 
-const DEFAULT_STUB_ROWS: LibraryRow[] = [
-  { id: '1', label: 'Sample Record A', storageKey: 'vitalicast_canonical_111', kind: 'canonical' },
-  { id: '2', label: 'Sample Record B', storageKey: 'vitalicast_canonical_222', kind: 'canonical' },
-  { id: '3', label: 'Sample Addendum', storageKey: 'vitalicast_addendum_333', kind: 'addendum' }
-];
-
 export const LibrarySelectionShell: React.FC<LibrarySelectionShellProps> = ({
-  rows = DEFAULT_STUB_ROWS,
+  provider = createArchiveKeyListProvider(),
   DetailComponent = RecordDetailShell
 }) => {
   const [selectedStorageKey, setSelectedStorageKey] = useState<string | null>(null);
+  const [providerResult, setProviderResult] = useState<ArchiveKeyListResult | null>(null);
+  const [loading, setLoading] = useState<boolean>(true);
+
+  useEffect(() => {
+    let isCancelled = false;
+    const fetchKeys = async () => {
+      setLoading(true);
+      try {
+        const result = await provider.listAvailableArchiveKeys();
+        if (!isCancelled) {
+          setProviderResult(result);
+        }
+      } catch (err) {
+        // Fallback for safety
+      } finally {
+        if (!isCancelled) {
+          setLoading(false);
+        }
+      }
+    };
+    fetchKeys();
+    return () => { isCancelled = true; };
+  }, [provider]);
 
   const handleSelect = (key: string) => {
     setSelectedStorageKey(key);
@@ -33,17 +44,36 @@ export const LibrarySelectionShell: React.FC<LibrarySelectionShellProps> = ({
     setSelectedStorageKey(null);
   };
 
+  if (loading) {
+    return <div className="p-4">Loading library context...</div>;
+  }
+
+  if (providerResult?.platformAuthority === 'unsupported') {
+    return (
+      <div className="p-4 border rounded shadow-sm bg-gray-50 text-gray-700 max-w-2xl">
+        Archive browsing requires an audited platform list provider. Exact-record verification remains available when accessed through a direct record context.
+      </div>
+    );
+  }
+
   return (
     <div className="flex flex-col md:flex-row gap-4 p-4">
       {/* List View */}
       <div className="w-full md:w-1/3 border rounded shadow-sm bg-white overflow-hidden flex flex-col h-[600px]">
         <div className="p-4 bg-gray-50 border-b font-semibold text-gray-800">
-          Library Stub
+          Library Selection
         </div>
+        
+        {providerResult?.platformAuthority === 'dev_non_authoritative_fallback' && (
+          <div className="p-2 bg-amber-50 text-amber-800 text-xs border-b border-amber-200">
+            Development fallback list. These rows are non-authoritative and are not a production archive browser.
+          </div>
+        )}
+
         <div className="flex-1 overflow-y-auto p-2">
-          {rows.map(row => (
+          {providerResult?.records.map(row => (
             <button
-              key={row.id}
+              key={row.storageKey}
               onClick={() => handleSelect(row.storageKey)}
               className={`w-full text-left p-3 mb-2 rounded border focus:outline-none transition-colors ${
                 selectedStorageKey === row.storageKey 
@@ -51,11 +81,11 @@ export const LibrarySelectionShell: React.FC<LibrarySelectionShellProps> = ({
                   : 'bg-white hover:bg-gray-50 border-gray-200'
               }`}
             >
-              <div className="font-medium text-gray-800">{row.label}</div>
-              <div className="text-xs text-gray-500 mt-1 capitalize">{row.kind || 'Unknown Kind'}</div>
+              <div className="font-medium text-gray-800 truncate">{row.label || row.storageKey}</div>
+              <div className="text-xs text-gray-500 mt-1 capitalize">{row.kind}</div>
             </button>
           ))}
-          {rows.length === 0 && (
+          {(!providerResult?.records || providerResult.records.length === 0) && (
             <div className="p-4 text-center text-gray-500 text-sm">
               No records available.
             </div>

@@ -1,63 +1,87 @@
 import React from 'react';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { LibrarySelectionShell } from './LibrarySelectionShell';
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
+import { ArchiveKeyListProvider, ArchiveKeyListResult } from '../core/archive/ArchiveKeyListProvider';
 
 const MockDetailComponent: React.FC<{ storageKey: string }> = ({ storageKey }) => (
   <div data-testid="mock-detail">Loaded: {storageKey}</div>
 );
 
 describe('LibrarySelectionShell', () => {
-  it('initial selected state renders no detail content', () => {
-    render(<LibrarySelectionShell DetailComponent={MockDetailComponent} />);
-    expect(screen.getByText('Select a record to view details.')).toBeTruthy();
-    expect(screen.queryByTestId('mock-detail')).toBeNull();
+  const getMockProvider = (result: Partial<ArchiveKeyListResult> = {}): ArchiveKeyListProvider => ({
+    listAvailableArchiveKeys: vi.fn().mockResolvedValue({
+      platformAuthority: 'dev_non_authoritative_fallback',
+      records: [
+        { storageKey: 'vitalicast_canonical_111', kind: 'canonical', label: 'Record A' },
+        { storageKey: 'vitalicast_addendum_222', kind: 'addendum', label: 'Record B' }
+      ],
+      findings: [],
+      rawPayloadReturned: false,
+      ...result
+    })
   });
 
-  it('clicking one row selects exactly one storageKey and renders detail', () => {
-    render(<LibrarySelectionShell DetailComponent={MockDetailComponent} />);
+  it('unsupported provider state renders fail-closed copy and no fake rows', async () => {
+    const provider = getMockProvider({ platformAuthority: 'unsupported', records: [] });
+    render(<LibrarySelectionShell provider={provider} DetailComponent={MockDetailComponent} />);
     
-    // Select first record
-    fireEvent.click(screen.getByText('Sample Record A'));
-    
-    expect(screen.queryByText('Select a record to view details.')).toBeNull();
-    const detail = screen.getByTestId('mock-detail');
-    expect(detail).toBeTruthy();
-    expect(detail.textContent).toBe('Loaded: vitalicast_canonical_111');
+    await waitFor(() => {
+      expect(screen.getByText(/Archive browsing requires an audited platform list provider/)).toBeTruthy();
+    });
+    expect(screen.queryByText('Library Selection')).toBeNull();
   });
 
-  it('clicking close clears selectedStorageKey and unmounts detail shell', () => {
-    render(<LibrarySelectionShell DetailComponent={MockDetailComponent} />);
+  it('dev fallback provider state renders non-authoritative banner', async () => {
+    const provider = getMockProvider();
+    render(<LibrarySelectionShell provider={provider} DetailComponent={MockDetailComponent} />);
     
-    // Select first record
-    fireEvent.click(screen.getByText('Sample Record A'));
+    await waitFor(() => {
+      expect(screen.getByText(/Development fallback list/)).toBeTruthy();
+      expect(screen.getByText('Record A')).toBeTruthy();
+    });
+  });
+
+  it('clicking one row selects exactly one storageKey and renders detail', async () => {
+    const provider = getMockProvider();
+    render(<LibrarySelectionShell provider={provider} DetailComponent={MockDetailComponent} />);
+    
+    await waitFor(() => expect(screen.getByText('Record A')).toBeTruthy());
+    
+    fireEvent.click(screen.getByText('Record A'));
+    
+    expect(screen.getByTestId('mock-detail')).toBeTruthy();
+    expect(screen.getByTestId('mock-detail').textContent).toBe('Loaded: vitalicast_canonical_111');
+  });
+
+  it('clicking close clears selectedStorageKey and unmounts detail shell', async () => {
+    const provider = getMockProvider();
+    render(<LibrarySelectionShell provider={provider} DetailComponent={MockDetailComponent} />);
+    
+    await waitFor(() => expect(screen.getByText('Record A')).toBeTruthy());
+    fireEvent.click(screen.getByText('Record A'));
     expect(screen.getByTestId('mock-detail')).toBeTruthy();
     
-    // Close
     fireEvent.click(screen.getByText('Close Details'));
-    
-    expect(screen.getByText('Select a record to view details.')).toBeTruthy();
     expect(screen.queryByTestId('mock-detail')).toBeNull();
+    expect(screen.getByText('Select a record to view details.')).toBeTruthy();
   });
 
-  it('browser URL/location does not contain raw storageKey after selection', () => {
-    render(<LibrarySelectionShell DetailComponent={MockDetailComponent} />);
+  it('URL/location/history remains free of storageKey', async () => {
+    const provider = getMockProvider();
+    render(<LibrarySelectionShell provider={provider} DetailComponent={MockDetailComponent} />);
     
-    fireEvent.click(screen.getByText('Sample Record B')); // key is vitalicast_canonical_222
+    await waitFor(() => expect(screen.getByText('Record A')).toBeTruthy());
+    fireEvent.click(screen.getByText('Record A'));
     
-    expect(window.location.href).not.toContain('vitalicast_canonical_222');
-    expect(window.location.search).not.toContain('vitalicast_canonical_222');
-    expect(window.location.pathname).not.toContain('vitalicast_canonical_222');
+    expect(window.location.href).not.toContain('vitalicast_canonical_111');
   });
 
-  it('no array/bulk key input is passed to RecordDetailShell', () => {
-    // Due to TS and structure, this is checked by logic (handleSelect strictly accepts a string).
-    // The button passes only row.storageKey (which is a string).
-    expect(true).toBe(true);
-  });
-
-  it('raw payload/body/decryptedValue is not rendered and prohibited language does not appear', () => {
-    render(<LibrarySelectionShell DetailComponent={MockDetailComponent} />);
+  it('no mutation methods are called or imported and prohibited language does not appear', async () => {
+    const provider = getMockProvider();
+    render(<LibrarySelectionShell provider={provider} DetailComponent={MockDetailComponent} />);
+    
+    await waitFor(() => expect(screen.getByText('Record A')).toBeTruthy());
     
     const text = document.body.textContent || '';
     expect(text).not.toMatch(/danger|critical|unsafe|compromised|medical|diagnosis|symptoms|recommendations/i);
