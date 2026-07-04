@@ -38,3 +38,21 @@ export interface EnumerateArchiveKeysResult {
   enumerationStatus: ArchiveKeyProvenance;
   truncated: boolean;
 }
+
+export type VerificationStatus = "verified" | "mismatch" | "malformed" | "unsupported";
+export type RecordKind = "canonical" | "addendum";
+
+export interface VerificationFinding {
+  code: string;
+  message: string;
+}
+
+export interface RecordVerificationResult {
+  verificationStatus: VerificationStatus;
+  storageKey: string;
+  recordKind: RecordKind;
+  checkedAt: string;
+  hashAlgorithm: "SHA-256";
+  findings: VerificationFinding[];
+  rawPayloadReturned: false;
+}
