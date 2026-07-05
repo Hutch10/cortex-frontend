@@ -20,14 +20,14 @@ function createNeutralArchiveIdentityLabels(records: ArchiveKeyRecord[]): Archiv
 
 interface LibrarySelectionShellProps {
   provider?: ArchiveKeyListProvider;
-  DetailComponent?: React.ComponentType<{ storageKey: string }>;
+  DetailComponent?: React.ComponentType<{ storageKey: string, displayLabel?: string }>;
 }
 
 export const LibrarySelectionShell: React.FC<LibrarySelectionShellProps> = ({
   provider = createArchiveKeyListProvider(),
   DetailComponent = RecordDetailShell
 }) => {
-  const [selectedStorageKey, setSelectedStorageKey] = useState<string | null>(null);
+  const [selectedRecord, setSelectedRecord] = useState<{ storageKey: string, displayLabel: string } | null>(null);
   const [providerResult, setProviderResult] = useState<ArchiveKeyListResult | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
 
@@ -53,12 +53,12 @@ export const LibrarySelectionShell: React.FC<LibrarySelectionShellProps> = ({
     return () => { isCancelled = true; };
   }, [provider]);
 
-  const handleSelect = (key: string) => {
-    setSelectedStorageKey(key);
+  const handleSelect = (key: string, label: string) => {
+    setSelectedRecord({ storageKey: key, displayLabel: label });
   };
 
   const handleClose = () => {
-    setSelectedStorageKey(null);
+    setSelectedRecord(null);
   };
 
   if (loading) {
@@ -91,9 +91,9 @@ export const LibrarySelectionShell: React.FC<LibrarySelectionShellProps> = ({
           {providerResult?.records.map(row => (
             <button
               key={row.storageKey}
-              onClick={() => handleSelect(row.storageKey)}
+              onClick={() => handleSelect(row.storageKey, row.label || row.storageKey)}
               className={`w-full text-left p-3 mb-2 rounded border focus:outline-none transition-colors ${
-                selectedStorageKey === row.storageKey 
+                selectedRecord?.storageKey === row.storageKey 
                   ? 'bg-blue-50 border-blue-300' 
                   : 'bg-white hover:bg-gray-50 border-gray-200'
               }`}
@@ -114,7 +114,7 @@ export const LibrarySelectionShell: React.FC<LibrarySelectionShellProps> = ({
 
       {/* Detail View */}
       <div className="w-full md:w-2/3 border rounded shadow-sm bg-white h-[600px] overflow-y-auto">
-        {selectedStorageKey ? (
+        {selectedRecord ? (
           <div className="flex flex-col h-full">
             <div className="p-2 border-b bg-gray-50 flex justify-end">
               <button 
@@ -125,7 +125,7 @@ export const LibrarySelectionShell: React.FC<LibrarySelectionShellProps> = ({
               </button>
             </div>
             <div className="p-4 flex-1">
-              <DetailComponent storageKey={selectedStorageKey} />
+              <DetailComponent storageKey={selectedRecord.storageKey} displayLabel={selectedRecord.displayLabel} />
             </div>
           </div>
         ) : (

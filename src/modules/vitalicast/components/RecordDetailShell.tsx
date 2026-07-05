@@ -5,11 +5,13 @@ import { RawPayloadViewer } from './RawPayloadViewer';
 
 interface RecordDetailShellProps {
   storageKey: string | null;
+  displayLabel?: string;
   storage?: { readSecureRecord(options: { storageKey: string }): Promise<{ value: string | null }> };
 }
 
 export const RecordDetailShell: React.FC<RecordDetailShellProps> = ({
   storageKey,
+  displayLabel,
   storage = VitalicastSecureStorage
 }) => {
   const [loading, setLoading] = useState(false);
@@ -73,23 +75,12 @@ export const RecordDetailShell: React.FC<RecordDetailShellProps> = ({
     );
   }
 
-  const isCanonical = storageKey.startsWith('vitalicast_canonical_');
-  const recordKindDisplay = isCanonical ? 'Canonical' : 'Addendum';
-  
-  // Mask key: vitalicast_canonical_...abcd
-  const prefix = isCanonical ? 'vitalicast_canonical_' : 'vitalicast_addendum_';
-  const suffix = storageKey.substring(storageKey.length - 4);
-  const maskedKey = storageKey.length > prefix.length + 4 
-    ? `${prefix}?${suffix}`
-    : storageKey;
-
   return (
     <div className="p-4 bg-white border rounded shadow-sm max-w-2xl flex flex-col h-full">
       <h2 className="text-xl font-semibold text-gray-800 mb-2">Record Detail Shell</h2>
       
       <div className="text-sm text-gray-600 mb-4 bg-gray-50 p-2 rounded border border-gray-200">
-        <p><strong>Context:</strong> {recordKindDisplay}</p>
-        <p><strong>Reference:</strong> {maskedKey}</p>
+        <p><strong>Context:</strong> {displayLabel || 'Unknown Record'}</p>
       </div>
 
       <div className="flex-1 overflow-y-auto pr-2">
