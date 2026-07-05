@@ -23,7 +23,7 @@ export interface ArchiveKeyListProvider {
   listAvailableArchiveKeys(): Promise<ArchiveKeyListResult>;
 }
 
-export class NativeSecureKeyListProviderStub implements ArchiveKeyListProvider {
+export class NativeSecureKeyListProvider implements ArchiveKeyListProvider {
   public async listAvailableArchiveKeys(): Promise<ArchiveKeyListResult> {
     try {
       const result = await VitalicastSecureStorage.listArchiveStorageKeys();
@@ -33,9 +33,9 @@ export class NativeSecureKeyListProviderStub implements ArchiveKeyListProvider {
         label: key
       }));
       return {
-        platformAuthority: "unsupported",
+        platformAuthority: "native_authoritative",
         records,
-        findings: ["native_key_list_provider_unsupported_phase10"],
+        findings: ["native_authoritative_archive_identity_enumeration"],
         rawPayloadReturned: false,
       };
     } catch (error) {
@@ -80,7 +80,7 @@ export class BrowserFallbackKeyListProvider implements ArchiveKeyListProvider {
 
 export function createArchiveKeyListProvider(): ArchiveKeyListProvider {
   if (Capacitor.isNativePlatform()) {
-    return new NativeSecureKeyListProviderStub();
+    return new NativeSecureKeyListProvider();
   }
   return new BrowserFallbackKeyListProvider();
 }
