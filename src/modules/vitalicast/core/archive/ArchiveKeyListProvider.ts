@@ -29,8 +29,7 @@ export class NativeSecureKeyListProvider implements ArchiveKeyListProvider {
       const result = await VitalicastSecureStorage.listArchiveStorageKeys();
       const records: ArchiveKeyRecord[] = result.keys.map(key => ({
         storageKey: key,
-        kind: key.startsWith('vitalicast_canonical_') ? 'canonical' : 'addendum',
-        label: key
+        kind: key.startsWith('vitalicast_canonical_') ? 'canonical' : 'addendum'
       }));
       return {
         platformAuthority: "native_authoritative",
@@ -62,9 +61,9 @@ export class BrowserFallbackKeyListProvider implements ArchiveKeyListProvider {
         if (!key) continue;
 
         if (key.startsWith('vitalicast_canonical_')) {
-          records.push({ storageKey: key, kind: 'canonical', label: key });
+          records.push({ storageKey: key, kind: 'canonical' });
         } else if (key.startsWith('vitalicast_addendum_')) {
-          records.push({ storageKey: key, kind: 'addendum', label: key });
+          records.push({ storageKey: key, kind: 'addendum' });
         }
       }
     }

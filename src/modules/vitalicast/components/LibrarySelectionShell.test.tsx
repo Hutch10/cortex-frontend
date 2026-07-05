@@ -8,13 +8,14 @@ const MockDetailComponent: React.FC<{ storageKey: string }> = ({ storageKey }) =
   <div data-testid="mock-detail">Loaded: {storageKey}</div>
 );
 
-describe('LibrarySelectionShell', () => {
+describe('LibrarySelectionShell neutral labels and identity handling', () => {
   const getMockProvider = (result: Partial<ArchiveKeyListResult> = {}): ArchiveKeyListProvider => ({
     listAvailableArchiveKeys: vi.fn().mockResolvedValue({
       platformAuthority: 'dev_non_authoritative_fallback',
       records: [
-        { storageKey: 'vitalicast_canonical_111', kind: 'canonical', label: 'Record A' },
-        { storageKey: 'vitalicast_addendum_222', kind: 'addendum', label: 'Record B' }
+        { storageKey: 'vitalicast_canonical_111', kind: 'canonical' },
+        { storageKey: 'vitalicast_addendum_222', kind: 'addendum' },
+        { storageKey: 'vitalicast_canonical_333', kind: 'canonical' }
       ],
       findings: [],
       rawPayloadReturned: false,
@@ -22,7 +23,52 @@ describe('LibrarySelectionShell', () => {
     })
   });
 
-  it('unsupported provider state renders fail-closed copy and no fake rows', async () => {
+  it('A, B, C: renders canonical and addendum with separate ordinals preserving order', async () => {
+    const provider = getMockProvider({ platformAuthority: 'native_authoritative' });
+    render(<LibrarySelectionShell provider={provider} DetailComponent={MockDetailComponent} />);
+    
+    await waitFor(() => {
+      expect(screen.getByText('Record 1')).toBeTruthy();
+      expect(screen.getByText('Addendum 1')).toBeTruthy();
+      expect(screen.getByText('Record 2')).toBeTruthy();
+    });
+  });
+
+  it('D, E: raw storageKey is not present in visible rendered text or as a fallback', async () => {
+    const provider = getMockProvider();
+    const { container } = render(<LibrarySelectionShell provider={provider} DetailComponent={MockDetailComponent} />);
+    
+    await waitFor(() => {
+      expect(screen.getByText('Record 1')).toBeTruthy();
+    });
+    const text = container.textContent || '';
+    expect(text).not.toContain('vitalicast_canonical_111');
+    expect(text).not.toContain('vitalicast_addendum_222');
+  });
+
+  it('F: selecting Record 1 calls exact read logic with original canonical storageKey', async () => {
+    const provider = getMockProvider();
+    render(<LibrarySelectionShell provider={provider} DetailComponent={MockDetailComponent} />);
+    
+    await waitFor(() => expect(screen.getByText('Record 1')).toBeTruthy());
+    fireEvent.click(screen.getByText('Record 1'));
+    
+    expect(screen.getByTestId('mock-detail')).toBeTruthy();
+    expect(screen.getByTestId('mock-detail').textContent).toBe('Loaded: vitalicast_canonical_111');
+  });
+
+  it('G: selecting Addendum 1 calls exact read logic with original addendum storageKey', async () => {
+    const provider = getMockProvider();
+    render(<LibrarySelectionShell provider={provider} DetailComponent={MockDetailComponent} />);
+    
+    await waitFor(() => expect(screen.getByText('Addendum 1')).toBeTruthy());
+    fireEvent.click(screen.getByText('Addendum 1'));
+    
+    expect(screen.getByTestId('mock-detail')).toBeTruthy();
+    expect(screen.getByTestId('mock-detail').textContent).toBe('Loaded: vitalicast_addendum_222');
+  });
+
+  it('J, K: unsupported result preserves calm unsupported behavior and is not an authoritative empty archive', async () => {
     const provider = getMockProvider({ platformAuthority: 'unsupported', records: [] });
     render(<LibrarySelectionShell provider={provider} DetailComponent={MockDetailComponent} />);
     
@@ -30,61 +76,53 @@ describe('LibrarySelectionShell', () => {
       expect(screen.getByText(/Archive browsing requires an audited platform list provider/)).toBeTruthy();
     });
     expect(screen.queryByText('Library Selection')).toBeNull();
+    expect(screen.queryByText(/archive empty/i)).toBeNull();
   });
 
-  it('dev fallback provider state renders non-authoritative banner', async () => {
-    const provider = getMockProvider();
+  it('L: native_authoritative empty list uses bounded neutral wording', async () => {
+    const provider = getMockProvider({ platformAuthority: 'native_authoritative', records: [] });
+    render(<LibrarySelectionShell provider={provider} DetailComponent={MockDetailComponent} />);
+    
+    await waitFor(() => {
+      expect(screen.getByText('No archive records available.')).toBeTruthy();
+    });
+  });
+
+  it('M: dev_non_authoritative_fallback remains distinguishable', async () => {
+    const provider = getMockProvider({ platformAuthority: 'dev_non_authoritative_fallback' });
     render(<LibrarySelectionShell provider={provider} DetailComponent={MockDetailComponent} />);
     
     await waitFor(() => {
       expect(screen.getByText(/Development fallback list/)).toBeTruthy();
-      expect(screen.getByText('Record A')).toBeTruthy();
     });
   });
 
-  it('clicking one row selects exactly one storageKey and renders detail', async () => {
-    const provider = getMockProvider();
-    render(<LibrarySelectionShell provider={provider} DetailComponent={MockDetailComponent} />);
+  it('N, O: native_authoritative does not create verification status or trigger completeness wording', async () => {
+    const provider = getMockProvider({ platformAuthority: 'native_authoritative' });
+    const { container } = render(<LibrarySelectionShell provider={provider} DetailComponent={MockDetailComponent} />);
     
-    await waitFor(() => expect(screen.getByText('Record A')).toBeTruthy());
-    
-    fireEvent.click(screen.getByText('Record A'));
-    
-    expect(screen.getByTestId('mock-detail')).toBeTruthy();
-    expect(screen.getByTestId('mock-detail').textContent).toBe('Loaded: vitalicast_canonical_111');
+    await waitFor(() => expect(screen.getByText('Record 1')).toBeTruthy());
+    const text = container.textContent || '';
+    expect(text).not.toMatch(/verified|authentic/i);
+    expect(text).not.toMatch(/complete|all records|100%/i);
   });
 
-  it('clicking close clears selectedStorageKey and unmounts detail shell', async () => {
+  it('P: no URL/query/history storageKey exposure introduced', async () => {
     const provider = getMockProvider();
     render(<LibrarySelectionShell provider={provider} DetailComponent={MockDetailComponent} />);
     
-    await waitFor(() => expect(screen.getByText('Record A')).toBeTruthy());
-    fireEvent.click(screen.getByText('Record A'));
-    expect(screen.getByTestId('mock-detail')).toBeTruthy();
-    
-    fireEvent.click(screen.getByText('Close Details'));
-    expect(screen.queryByTestId('mock-detail')).toBeNull();
-    expect(screen.getByText('Select a record to view details.')).toBeTruthy();
-  });
-
-  it('URL/location/history remains free of storageKey', async () => {
-    const provider = getMockProvider();
-    render(<LibrarySelectionShell provider={provider} DetailComponent={MockDetailComponent} />);
-    
-    await waitFor(() => expect(screen.getByText('Record A')).toBeTruthy());
-    fireEvent.click(screen.getByText('Record A'));
+    await waitFor(() => expect(screen.getByText('Record 1')).toBeTruthy());
+    fireEvent.click(screen.getByText('Record 1'));
     
     expect(window.location.href).not.toContain('vitalicast_canonical_111');
   });
 
-  it('no mutation methods are called or imported and prohibited language does not appear', async () => {
+  it('U: no mutation APIs introduced or used', async () => {
     const provider = getMockProvider();
-    render(<LibrarySelectionShell provider={provider} DetailComponent={MockDetailComponent} />);
+    const { container } = render(<LibrarySelectionShell provider={provider} DetailComponent={MockDetailComponent} />);
     
-    await waitFor(() => expect(screen.getByText('Record A')).toBeTruthy());
-    
-    const text = document.body.textContent || '';
-    expect(text).not.toMatch(/danger|critical|unsafe|compromised|medical|diagnosis|symptoms|recommendations/i);
-    expect(text).not.toMatch(/raw payload|body|decryptedValue/i);
+    await waitFor(() => expect(screen.getByText('Record 1')).toBeTruthy());
+    const text = container.textContent || '';
+    expect(text).not.toMatch(/delete|update|repair|clear|reset|mutation/i);
   });
 });

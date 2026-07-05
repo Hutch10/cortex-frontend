@@ -36,8 +36,8 @@ describe('ArchiveKeyListProvider', () => {
       expect(result.platformAuthority).toBe('native_authoritative');
       expect(result.rawPayloadReturned).toBe(false);
       expect(result.records.length).toBe(2);
-      expect(result.records[0]).toEqual({ storageKey: 'vitalicast_canonical_123', kind: 'canonical', label: 'vitalicast_canonical_123' });
-      expect(result.records[1]).toEqual({ storageKey: 'vitalicast_addendum_456', kind: 'addendum', label: 'vitalicast_addendum_456' });
+      expect(result.records[0]).toEqual({ storageKey: 'vitalicast_canonical_123', kind: 'canonical' });
+      expect(result.records[1]).toEqual({ storageKey: 'vitalicast_addendum_456', kind: 'addendum' });
       expect(result.findings).toContain('native_authoritative_archive_identity_enumeration');
       expect(result.findings).not.toContain('complete'); // Ensure no complete claims
     });

@@ -1,6 +1,22 @@
 import React, { useState, useEffect } from 'react';
 import { RecordDetailShell } from './RecordDetailShell';
-import { ArchiveKeyListProvider, createArchiveKeyListProvider, ArchiveKeyListResult } from '../core/archive/ArchiveKeyListProvider';
+import { ArchiveKeyListProvider, createArchiveKeyListProvider, ArchiveKeyListResult, ArchiveKeyRecord } from '../core/archive/ArchiveKeyListProvider';
+
+function createNeutralArchiveIdentityLabels(records: ArchiveKeyRecord[]): ArchiveKeyRecord[] {
+  let canonicalCount = 0;
+  let addendumCount = 0;
+  return records.map(record => {
+    let label = '';
+    if (record.kind === 'canonical') {
+      canonicalCount++;
+      label = `Record ${canonicalCount}`;
+    } else {
+      addendumCount++;
+      label = `Addendum ${addendumCount}`;
+    }
+    return { ...record, label };
+  });
+}
 
 interface LibrarySelectionShellProps {
   provider?: ArchiveKeyListProvider;
@@ -22,7 +38,8 @@ export const LibrarySelectionShell: React.FC<LibrarySelectionShellProps> = ({
       try {
         const result = await provider.listAvailableArchiveKeys();
         if (!isCancelled) {
-          setProviderResult(result);
+          const processedRecords = createNeutralArchiveIdentityLabels(result.records);
+          setProviderResult({ ...result, records: processedRecords });
         }
       } catch (err) {
         // Fallback for safety
@@ -81,13 +98,15 @@ export const LibrarySelectionShell: React.FC<LibrarySelectionShellProps> = ({
                   : 'bg-white hover:bg-gray-50 border-gray-200'
               }`}
             >
-              <div className="font-medium text-gray-800 truncate">{row.label || row.storageKey}</div>
+              <div className="font-medium text-gray-800 truncate">{row.label}</div>
               <div className="text-xs text-gray-500 mt-1 capitalize">{row.kind}</div>
             </button>
           ))}
           {(!providerResult?.records || providerResult.records.length === 0) && (
             <div className="p-4 text-center text-gray-500 text-sm">
-              No records available.
+              {providerResult?.platformAuthority === 'native_authoritative' 
+                ? 'No archive records available.' 
+                : 'No records available.'}
             </div>
           )}
         </div>
