@@ -1,6 +1,4 @@
-import React, { useMemo, useState } from 'react';
-import { parsePayloadStructure } from '../core/schema/StructuralPayloadParser';
-import { StructuralSchemaRenderer } from './StructuralSchemaRenderer';
+import React, { useState } from 'react';
 
 interface RawPayloadViewerProps {
   payload: string | null | undefined;
@@ -10,23 +8,42 @@ export const RawPayloadViewer: React.FC<RawPayloadViewerProps> = ({ payload }) =
   const [expanded, setExpanded] = useState(false);
   const [viewMode, setViewMode] = useState<'tree' | 'raw'>('tree');
 
-  // Strict useMemo parsing, avoiding any persisted cache/state for parsed structures.
-  const parsedNodes = useMemo(() => {
-    if (!payload) return null;
-    return parsePayloadStructure(payload);
-  }, [payload]);
-
-  // We need to know if it's malformed to decide how to handle the toggle view.
-  // parsePayloadStructure always returns a node, but if it fails it returns exactly
-  // one node with "Payload parsing unavailable."
-  const isMalformed = useMemo(() => {
-    if (!parsedNodes) return false;
-    return parsedNodes.length === 1 && parsedNodes[0].displayValue === 'Payload parsing unavailable.';
-  }, [parsedNodes]);
-
   if (!payload) {
     return null;
   }
+
+  let parsed: any;
+  let isMalformed = false;
+  try {
+    parsed = JSON.parse(payload);
+  } catch (err) {
+    isMalformed = true;
+  }
+
+  const renderJsonTree = (data: any, name: string, depth: number): React.ReactNode => {
+    const isObject = typeof data === 'object' && data !== null && !Array.isArray(data);
+    const isArray = Array.isArray(data);
+
+    if (isObject || isArray) {
+      const keys = Object.keys(data);
+      return (
+        <details key={name} style={{ marginLeft: depth > 0 ? "1rem" : "0" }} className="structural-group">
+          <summary>
+            <strong>{name}</strong>: {isArray ? '[Array]' : '{Object}'}
+          </summary>
+          <div className="structural-group-children">
+            {keys.map((k) => renderJsonTree(data[k], k, depth + 1))}
+          </div>
+        </details>
+      );
+    }
+
+    return (
+      <div key={name} style={{ marginLeft: depth > 0 ? "1rem" : "0" }} className="structural-field">
+        <strong>{name}</strong>: <span>{String(data)}</span>
+      </div>
+    );
+  };
 
   return (
     <div className="mt-4 border rounded shadow-sm bg-gray-50 overflow-hidden text-sm structural-payload-viewer">
@@ -40,7 +57,6 @@ export const RawPayloadViewer: React.FC<RawPayloadViewerProps> = ({ payload }) =
 
       {expanded && (
         <div className="border-t border-gray-200 bg-white flex flex-col max-h-[500px]">
-          {/* Neutral Toggle - only local state, no primary styling */}
           <div className="flex border-b border-gray-200 p-2 space-x-2 bg-gray-50">
             <button
               onClick={() => setViewMode('tree')}
@@ -62,7 +78,15 @@ export const RawPayloadViewer: React.FC<RawPayloadViewerProps> = ({ payload }) =
           
           <div className="p-4 overflow-auto">
             {viewMode === 'tree' ? (
-              <StructuralSchemaRenderer nodes={parsedNodes || []} />
+              isMalformed ? (
+                <div>
+                  <div className="text-gray-500 italic mb-2">Payload parsing unavailable.</div>
+                </div>
+              ) : (
+                <div className="font-mono text-xs">
+                  {renderJsonTree(parsed, 'root', 0)}
+                </div>
+              )
             ) : (
               isMalformed ? (
                 <div>

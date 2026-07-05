@@ -1,50 +1,87 @@
 import React from "react";
-import { StructuralFieldNode } from "../core/schema/StructuralPayloadParser";
+import { PayloadClassification } from "../core/schema/PayloadClassifier";
+import { RawPayloadViewer } from "./RawPayloadViewer";
 
 export interface StructuralSchemaRendererProps {
-  nodes: StructuralFieldNode[];
+  classification: PayloadClassification;
+  rawPayload: string;
 }
 
-const NodeRenderer: React.FC<{ node: StructuralFieldNode; depth: number }> = ({ node, depth }) => {
-  const isGroup = node.valueType === "object" || node.valueType === "array";
+const JsonNodeRenderer: React.FC<{ data: any; name: string; depth: number }> = ({ data, name, depth }) => {
+  const isObject = typeof data === 'object' && data !== null && !Array.isArray(data);
+  const isArray = Array.isArray(data);
 
-  if (isGroup) {
+  if (isObject || isArray) {
+    const keys = Object.keys(data);
     return (
-      <details
-        style={{ marginLeft: depth > 0 ? "1rem" : "0" }}
-        className="structural-group"
-      >
+      <details style={{ marginLeft: depth > 0 ? "1rem" : "0" }} className="structural-group">
         <summary>
-          <strong>{node.key}</strong>: {node.displayValue || `[${node.valueType}]`}
-          {node.isTruncated && <span className="truncation-marker"> (truncated)</span>}
+          <strong>{name}</strong>: {isArray ? '[Array]' : '{Object}'}
         </summary>
         <div className="structural-group-children">
-          {node.children?.map((child) => (
-            <NodeRenderer key={child.path} node={child} depth={depth + 1} />
+          {keys.map((k) => (
+            <JsonNodeRenderer key={k} name={k} data={data[k]} depth={depth + 1} />
           ))}
         </div>
       </details>
     );
   }
 
+  // Primitive
   return (
     <div style={{ marginLeft: depth > 0 ? "1rem" : "0" }} className="structural-field">
-      <strong>{node.key}</strong>: <span>{node.displayValue}</span>
-      {node.isTruncated && <span className="truncation-marker"> (truncated)</span>}
+      <strong>{name}</strong>: <span>{String(data)}</span>
     </div>
   );
 };
 
-export const StructuralSchemaRenderer: React.FC<StructuralSchemaRendererProps> = ({ nodes }) => {
-  if (!nodes || nodes.length === 0) {
-    return <div className="structural-schema-empty">No structural data available.</div>;
+export const StructuralSchemaRenderer: React.FC<StructuralSchemaRendererProps> = ({ classification, rawPayload }) => {
+  const { state, knownFields, unknownFields } = classification;
+
+  if (state === 'structurally_unknown_payload' || state === 'malformed_payload') {
+    return (
+      <div className="structural-schema-container">
+        <div className="text-gray-600 italic mb-2">Unsupported structural presentation state.</div>
+        <RawPayloadViewer payload={rawPayload} />
+      </div>
+    );
   }
 
+  const unknownKeys = Object.keys(unknownFields);
+  const hasUnknownFields = unknownKeys.length > 0;
+
   return (
-    <div className="structural-schema-container">
-      {nodes.map((node) => (
-        <NodeRenderer key={node.path} node={node} depth={0} />
-      ))}
+    <div className="structural-schema-container p-4 bg-white shadow rounded">
+      <div className="text-xs text-gray-500 mb-4 italic">
+        Presented from the original archived payload. No archived values were changed.
+      </div>
+      
+      <div className="known-fields mb-6">
+        <h3 className="font-semibold text-lg border-b pb-2 mb-2">Certified Structural Data</h3>
+        {Object.keys(knownFields).map((key) => (
+          <div key={key} className="mb-2">
+            <span className="font-medium text-gray-700">{key}: </span>
+            <span className="text-gray-900">{typeof knownFields[key] === 'object' ? JSON.stringify(knownFields[key]) : String(knownFields[key])}</span>
+          </div>
+        ))}
+      </div>
+
+      {hasUnknownFields && (
+        <div className="unknown-fields-section border-t pt-4">
+          <h4 className="font-semibold text-md text-gray-800">Additional archived fields</h4>
+          <div className="text-sm text-gray-600 mb-2">{unknownKeys.length} fields preserved</div>
+          <details className="bg-gray-50 p-2 rounded border">
+            <summary className="cursor-pointer font-medium text-blue-600 hover:text-blue-800">
+              Inspect archived fields
+            </summary>
+            <div className="mt-2 text-sm font-mono text-gray-800">
+              {unknownKeys.map(k => (
+                <JsonNodeRenderer key={k} name={k} data={unknownFields[k]} depth={0} />
+              ))}
+            </div>
+          </details>
+        </div>
+      )}
     </div>
   );
 };

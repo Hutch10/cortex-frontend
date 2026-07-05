@@ -9,3 +9,8 @@ export interface VitalicastBatchPayload {
   timestamp: string; // The time the batch was flushed
   samples: VitalSample[]; // Raw 1Hz (or similar) samples
 }
+
+export interface VitalicastAddendumPayload {
+  domain: 'vitalicast';
+  type: 'telemetry_addendum';
+}

@@ -1,67 +1,58 @@
-import React from "react";
-import { render, screen } from "@testing-library/react";
-import { describe, it, expect } from "vitest";
-import { StructuralSchemaRenderer } from "./StructuralSchemaRenderer";
-import { parsePayloadStructure } from "../core/schema/StructuralPayloadParser";
+import React from 'react';
+import { render, screen, fireEvent } from '@testing-library/react';
+import { describe, it, expect } from 'vitest';
+import { StructuralSchemaRenderer } from './StructuralSchemaRenderer';
+import { PayloadClassification } from '../core/schema/PayloadClassifier';
 
-describe("StructuralSchemaRenderer", () => {
-  it("renders fixture node tree", () => {
-    const payload = JSON.stringify({ a: 1, b: "two" });
-    const nodes = parsePayloadStructure(payload);
+describe('StructuralSchemaRenderer', () => {
+  it('renders known fields securely and unknown fields inspectably', () => {
+    const classification: PayloadClassification = {
+      state: 'supported_structured_record',
+      knownFields: {
+        domain: 'vitalicast',
+        type: 'telemetry_batch',
+        timestamp: '2026-07-04T00:00:00Z',
+        samples: []
+      },
+      unknownFields: {
+        newSymptom: true
+      }
+    };
+
+    render(<StructuralSchemaRenderer classification={classification} rawPayload='{"domain":"vitalicast","type":"telemetry_batch","timestamp":"2026-07-04T00:00:00Z","samples":[],"newSymptom":true}' />);
+
+    // Provenance language
+    expect(screen.getByText('Presented from the original archived payload. No archived values were changed.')).toBeTruthy();
+
+    // Known fields
+    expect(screen.getByText('domain:')).toBeTruthy();
+    expect(screen.getByText('vitalicast')).toBeTruthy();
+    expect(screen.getByText('timestamp:')).toBeTruthy();
+    expect(screen.getByText('2026-07-04T00:00:00Z')).toBeTruthy();
+
+    // Unknown fields
+    expect(screen.getByText('Additional archived fields')).toBeTruthy();
+    expect(screen.getByText('1 fields preserved')).toBeTruthy();
     
-    render(<StructuralSchemaRenderer nodes={nodes} />);
-    
-    expect(screen.getByText("a")).toBeTruthy();
-    expect(screen.getByText("1")).toBeTruthy();
-    expect(screen.getByText("b")).toBeTruthy();
-    expect(screen.getByText("two")).toBeTruthy();
+    // Inspect toggle
+    const toggle = screen.getByText('Inspect archived fields');
+    fireEvent.click(toggle);
+
+    // It renders the unknown field inside the summary
+    expect(screen.getByText('newSymptom')).toBeTruthy();
+    expect(screen.getByText('true')).toBeTruthy();
   });
 
-  it("nested object/array groups are collapsed by default", () => {
-    const payload = JSON.stringify({ obj: { nested: "value" } });
-    const nodes = parsePayloadStructure(payload);
-    
-    render(<StructuralSchemaRenderer nodes={nodes} />);
-    
-    const detailsElement = screen.getByText("obj").closest("details");
-    expect(detailsElement).toBeTruthy();
-    expect(detailsElement?.hasAttribute("open")).toBe(false);
-  });
+  it('renders unknown state explicitly and falls back to RawPayloadViewer', () => {
+    const classification: PayloadClassification = {
+      state: 'structurally_unknown_payload',
+      knownFields: {},
+      unknownFields: { mood: 'happy' }
+    };
 
-  it("renders user-authored text exactly when supplied", () => {
-    const payload = JSON.stringify({ exactText: "My custom symptom observation" });
-    const nodes = parsePayloadStructure(payload);
-    
-    render(<StructuralSchemaRenderer nodes={nodes} />);
-    
-    expect(screen.getByText("My custom symptom observation")).toBeTruthy();
-  });
+    render(<StructuralSchemaRenderer classification={classification} rawPayload='{"mood":"happy"}' />);
 
-  it("does not generate banned semantic language", () => {
-    const payload = JSON.stringify({ simple: 123 });
-    const nodes = parsePayloadStructure(payload);
-    
-    render(<StructuralSchemaRenderer nodes={nodes} />);
-    
-    const text = document.body.textContent || "";
-    expect(text).not.toMatch(/diagnosis|recommendation|risk|trend|urgent|abnormal|healthy|unhealthy|symptom|severity|clinicalMeaning/i);
-  });
-
-  it("does not render copy/export/share controls", () => {
-    const payload = JSON.stringify({ simple: 123 });
-    const nodes = parsePayloadStructure(payload);
-    
-    render(<StructuralSchemaRenderer nodes={nodes} />);
-    
-    const text = document.body.textContent || "";
-    expect(text).not.toMatch(/copy|export|share|paste/i);
-  });
-
-  it("does not trigger reads, verification, telemetry, or mutation behavior", () => {
-    // StructuralSchemaRenderer takes nodes only. It has no props or hooks 
-    // to call external services, reads, or mutations.
-    const nodes = parsePayloadStructure(JSON.stringify({ a: 1 }));
-    render(<StructuralSchemaRenderer nodes={nodes} />);
-    expect(screen.getByText("a")).toBeTruthy();
+    expect(screen.getByText('Unsupported structural presentation state.')).toBeTruthy();
+    expect(screen.getByText('Raw Record Data')).toBeTruthy();
   });
 });

@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { RecordDetailVerificationSection } from './RecordDetailVerificationSection';
 import { VitalicastSecureStorage } from '../core/bridge/SecureStorageBridge';
 import { RawPayloadViewer } from './RawPayloadViewer';
+import { classifyPayload, PayloadClassification } from '../core/schema/PayloadClassifier';
+import { StructuralSchemaRenderer } from './StructuralSchemaRenderer';
 
 interface RecordDetailShellProps {
   storageKey: string | null;
@@ -18,6 +20,7 @@ export const RecordDetailShell: React.FC<RecordDetailShellProps> = ({
   const [recordContext, setRecordContext] = useState<any>(null);
   const [rawPayload, setRawPayload] = useState<string | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [classification, setClassification] = useState<PayloadClassification | null>(null);
 
   const isValidKey = (key: string | null): boolean => {
     return typeof key === 'string' && 
@@ -31,6 +34,7 @@ export const RecordDetailShell: React.FC<RecordDetailShellProps> = ({
     setRecordContext(null);
     setRawPayload(null);
     setErrorMsg(null);
+    setClassification(null);
     setLoading(false);
 
     if (!isValidKey(storageKey) || !storageKey) {
@@ -45,6 +49,7 @@ export const RecordDetailShell: React.FC<RecordDetailShellProps> = ({
           if (response.value) {
             setRecordContext({ loaded: true, partialValue: true });
             setRawPayload(response.value);
+            setClassification(classifyPayload(response.value));
           } else {
             setErrorMsg('Record reference could not be resolved in local storage.');
           }
@@ -75,6 +80,25 @@ export const RecordDetailShell: React.FC<RecordDetailShellProps> = ({
     );
   }
 
+  const renderPresentationLayer = () => {
+    if (!classification || !rawPayload) return null;
+
+    if (classification.state === 'supported_structured_record' || classification.state === 'supported_structured_addendum') {
+      return <StructuralSchemaRenderer classification={classification} rawPayload={rawPayload} />;
+    }
+
+    if (classification.state === 'structurally_unknown_payload' || classification.state === 'malformed_payload') {
+      return (
+        <div className="structural-schema-container">
+          <div className="text-gray-600 italic mb-2">Unsupported structural presentation state.</div>
+          <RawPayloadViewer payload={rawPayload} />
+        </div>
+      );
+    }
+    
+    return null;
+  };
+
   return (
     <div className="p-4 bg-white border rounded shadow-sm max-w-2xl flex flex-col h-full">
       <h2 className="text-xl font-semibold text-gray-800 mb-2">Record Detail Shell</h2>
@@ -87,7 +111,7 @@ export const RecordDetailShell: React.FC<RecordDetailShellProps> = ({
         {loading ? (
           <div className="p-4 text-gray-500">Loading envelope context...</div>
         ) : errorMsg ? (
-          <div className="p-4 text-amber-700 bg-amber-50 rounded border border-amber-200">
+          <div className="p-4 text-amber-700 bg-amber-50 rounded border border-amber-200" data-testid="error-message">
             {errorMsg}
           </div>
         ) : recordContext ? (
@@ -96,8 +120,7 @@ export const RecordDetailShell: React.FC<RecordDetailShellProps> = ({
               Record envelope loaded. 
             </div>
             
-            {/* Raw Payload Viewer added in Phase 11 */}
-            <RawPayloadViewer payload={rawPayload} />
+            {renderPresentationLayer()}
           </>
         ) : null}
 
