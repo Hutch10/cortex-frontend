@@ -83,14 +83,14 @@ export const RecordDetailShell: React.FC<RecordDetailShellProps> = ({
   const renderPresentationLayer = () => {
     if (!classification || !rawPayload) return null;
 
-    if (classification.state === 'supported_structured_record' || classification.state === 'supported_structured_addendum') {
+    if (classification === 'supported_structured_record' || classification === 'supported_structured_addendum') {
       return <StructuralSchemaRenderer classification={classification} rawPayload={rawPayload} />;
     }
 
-    if (classification.state === 'structurally_unknown_payload' || classification.state === 'malformed_payload') {
+    if (classification === 'structurally_unknown_payload' || classification === 'malformed_payload') {
       return (
         <div className="structural-schema-container">
-          <div className="text-gray-600 italic mb-2">Unsupported structural presentation state.</div>
+          <div className="text-gray-600 italic mb-2">Structural presentation is not available for this archived payload. The archived payload remains available for read-only inspection.</div>
           <RawPayloadViewer payload={rawPayload} />
         </div>
       );

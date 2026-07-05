@@ -1,0 +1,11 @@
+{
+  "domain": "vitalicast",
+  "type": "telemetry_batch",
+  "timestamp": "2026-07-04T00:00:00.000Z",
+  "samples": [
+    {
+      "timestamp": "2026-07-04T00:00:00.000Z",
+      "heartRate": 60
+    }
+  ]
+}
