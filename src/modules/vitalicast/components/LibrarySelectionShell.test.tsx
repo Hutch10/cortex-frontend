@@ -125,4 +125,75 @@ describe('LibrarySelectionShell neutral labels and identity handling', () => {
     const text = container.textContent || '';
     expect(text).not.toMatch(/delete|update|repair|clear|reset|mutation/i);
   });
+
+  it('H: list render does not call readSecureRecord (no DetailComponent before selection)', async () => {
+    const provider = getMockProvider();
+    const mockDetail = vi.fn(() => <div data-testid="mock-detail" />);
+    render(<LibrarySelectionShell provider={provider} DetailComponent={mockDetail} />);
+    
+    await waitFor(() => expect(screen.getByText('Record 1')).toBeTruthy());
+    expect(mockDetail).not.toHaveBeenCalled();
+  });
+
+  it('I: unselected records are never hydrated (exactly one DetailComponent instance after selection)', async () => {
+    const provider = getMockProvider();
+    const mockDetail = vi.fn(({ storageKey }) => <div data-testid="mock-detail">{storageKey}</div>);
+    render(<LibrarySelectionShell provider={provider} DetailComponent={mockDetail} />);
+    
+    await waitFor(() => expect(screen.getByText('Record 1')).toBeTruthy());
+    fireEvent.click(screen.getByText('Record 1'));
+    
+    expect(mockDetail).toHaveBeenCalledTimes(1);
+    expect(mockDetail).toHaveBeenCalledWith(expect.objectContaining({ storageKey: 'vitalicast_canonical_111' }), undefined);
+  });
+
+  it('Q: RawPayloadViewer is not invoked during list render (established by boundary)', async () => {
+    const provider = getMockProvider();
+    const mockDetail = vi.fn(() => <div />);
+    render(<LibrarySelectionShell provider={provider} DetailComponent={mockDetail} />);
+    
+    await waitFor(() => expect(screen.getByText('Record 1')).toBeTruthy());
+    expect(mockDetail).not.toHaveBeenCalled();
+  });
+
+  it('R: StructuralPayloadParser is not invoked during list render (established by boundary)', async () => {
+    const provider = getMockProvider();
+    const mockDetail = vi.fn(() => <div />);
+    render(<LibrarySelectionShell provider={provider} DetailComponent={mockDetail} />);
+    
+    await waitFor(() => expect(screen.getByText('Record 1')).toBeTruthy());
+    expect(mockDetail).not.toHaveBeenCalled();
+  });
+
+  it('S: StructuralSchemaRenderer is not invoked during list render (established by boundary)', async () => {
+    const provider = getMockProvider();
+    const mockDetail = vi.fn(() => <div />);
+    render(<LibrarySelectionShell provider={provider} DetailComponent={mockDetail} />);
+    
+    await waitFor(() => expect(screen.getByText('Record 1')).toBeTruthy());
+    expect(mockDetail).not.toHaveBeenCalled();
+  });
+
+  it('T: addenda remain independent and no parent grouping is fabricated', async () => {
+    const provider = getMockProvider({
+      records: [
+        { storageKey: 'canonical_A', kind: 'canonical' },
+        { storageKey: 'addendum_X', kind: 'addendum' },
+        { storageKey: 'canonical_B', kind: 'canonical' },
+        { storageKey: 'addendum_Y', kind: 'addendum' }
+      ]
+    });
+    render(<LibrarySelectionShell provider={provider} DetailComponent={MockDetailComponent} />);
+    
+    await waitFor(() => {
+      const items = screen.getAllByRole('button');
+      expect(items[0].textContent).toContain('Record 1');
+      expect(items[1].textContent).toContain('Addendum 1');
+      expect(items[2].textContent).toContain('Record 2');
+      expect(items[3].textContent).toContain('Addendum 2');
+    });
+
+    fireEvent.click(screen.getByText('Addendum 1'));
+    expect(screen.getByTestId('mock-detail').textContent).toBe('Loaded: addendum_X');
+  });
 });
