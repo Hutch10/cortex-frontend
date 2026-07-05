@@ -187,4 +187,103 @@ describe('RecordDetailShell Phase 4 & Sprint 7', () => {
     expect(text).toContain("Record 99");
     expect(text).not.toContain("vitalicast_canonical_A123");
   });
+
+  it('X. no payload values enter URL, query, or browser history', async () => {
+    const pushStateSpy = vi.spyOn(window.history, 'pushState');
+    const replaceStateSpy = vi.spyOn(window.history, 'replaceState');
+
+    const sentinelX = 'URL_PAYLOAD_SENTINEL_X';
+    const recordPayload = JSON.stringify({ domain: 'vitalicast', type: 'telemetry_batch', timestamp: sentinelX, samples: [] });
+    
+    mockStorage.readSecureRecord.mockResolvedValueOnce({ value: recordPayload });
+    render(<RecordDetailShell storageKey="vitalicast_canonical_A" storage={mockStorage} />);
+    
+    await waitFor(() => {
+      expect(screen.getByTestId("mock-structural-renderer").textContent).toBe(recordPayload);
+    });
+
+    const href = window.location.href;
+    const search = window.location.search;
+    const hash = window.location.hash;
+    const historyState = window.history.state;
+
+    expect(href).not.toContain(sentinelX);
+    expect(search).not.toContain(sentinelX);
+    expect(hash).not.toContain(sentinelX);
+    if (historyState) {
+      expect(JSON.stringify(historyState)).not.toContain(sentinelX);
+    }
+
+    pushStateSpy.mock.calls.forEach(callArgs => {
+      expect(JSON.stringify(callArgs)).not.toContain(sentinelX);
+    });
+    replaceStateSpy.mock.calls.forEach(callArgs => {
+      expect(JSON.stringify(callArgs)).not.toContain(sentinelX);
+    });
+
+    pushStateSpy.mockRestore();
+    replaceStateSpy.mockRestore();
+  });
+
+  it('Y. no selection or payload persistence added', async () => {
+    const localStorageSetItemSpy = vi.spyOn(window.localStorage.__proto__, 'setItem');
+    const sessionStorageSetItemSpy = vi.spyOn(window.sessionStorage.__proto__, 'setItem');
+
+    const storageKeySentinel = 'vitalicast_canonical_STORAGE_KEY_SENTINEL_Y';
+    const displayLabelSentinel = 'DISPLAY_LABEL_SENTINEL_Y';
+    const payloadSentinel = 'PAYLOAD_SENTINEL_Y';
+    const recordPayload = JSON.stringify({ domain: 'vitalicast', type: 'telemetry_batch', timestamp: payloadSentinel, samples: [] });
+    
+    mockStorage.readSecureRecord.mockResolvedValueOnce({ value: recordPayload });
+    render(<RecordDetailShell storageKey={storageKeySentinel} displayLabel={displayLabelSentinel} storage={mockStorage} />);
+    
+    await waitFor(() => {
+      expect(screen.getByTestId("mock-structural-renderer").textContent).toBe(recordPayload);
+    });
+
+    localStorageSetItemSpy.mock.calls.forEach(callArgs => {
+      const argsStr = JSON.stringify(callArgs);
+      expect(argsStr).not.toContain(storageKeySentinel);
+      expect(argsStr).not.toContain(displayLabelSentinel);
+      expect(argsStr).not.toContain(payloadSentinel);
+    });
+
+    sessionStorageSetItemSpy.mock.calls.forEach(callArgs => {
+      const argsStr = JSON.stringify(callArgs);
+      expect(argsStr).not.toContain(storageKeySentinel);
+      expect(argsStr).not.toContain(displayLabelSentinel);
+      expect(argsStr).not.toContain(payloadSentinel);
+    });
+
+    localStorageSetItemSpy.mockRestore();
+    sessionStorageSetItemSpy.mockRestore();
+  });
+
+  it('Z. no mutation APIs added', async () => {
+    const strictMockStorage = {
+      readSecureRecord: vi.fn(),
+      update: vi.fn(),
+      delete: vi.fn(),
+      reset: vi.fn(),
+      clear: vi.fn(),
+      repair: vi.fn()
+    };
+    
+    const recordPayload = JSON.stringify({ domain: 'vitalicast', type: 'telemetry_batch', timestamp: '2026', samples: [] });
+    strictMockStorage.readSecureRecord.mockResolvedValueOnce({ value: recordPayload });
+    
+    render(<RecordDetailShell storageKey="vitalicast_canonical_A" storage={strictMockStorage} />);
+    
+    await waitFor(() => {
+      expect(screen.getByTestId("mock-structural-renderer").textContent).toBe(recordPayload);
+    });
+
+    expect(strictMockStorage.readSecureRecord).toHaveBeenCalledTimes(1);
+
+    expect(strictMockStorage.update).not.toHaveBeenCalled();
+    expect(strictMockStorage.delete).not.toHaveBeenCalled();
+    expect(strictMockStorage.reset).not.toHaveBeenCalled();
+    expect(strictMockStorage.clear).not.toHaveBeenCalled();
+    expect(strictMockStorage.repair).not.toHaveBeenCalled();
+  });
 });
